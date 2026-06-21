@@ -135,12 +135,12 @@ Deno.serve(async (req: Request) => {
       supabase, source_text, discipline, direction,
     );
 
-    // ── 7. Call Groq API ──────────────────────────────────────
-    const groqKey = Deno.env.get("GROQ_API_KEY");
-    if (!groqKey) {
+    // ── 7. Call Gemini API ────────────────────────────────────
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!geminiKey) {
       await supabase
         .from("translations")
-        .update({ status: "failed", error_message: "GROQ_API_KEY not configured" })
+        .update({ status: "failed", error_message: "GEMINI_API_KEY not configured" })
         .eq("id", translationId);
       return json({ error: "Translation service not configured" }, 503);
     }
@@ -148,45 +148,46 @@ Deno.serve(async (req: Request) => {
     let translatedText: string;
 
     try {
-      const groqRes = await fetch(
-        "https://api.groq.com/openai/v1/chat/completions",
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
         {
           method: "POST",
-          headers: {
-            "Authorization": `Bearer ${groqKey}`,
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
-            temperature: 0.3,
-            max_tokens: 2048,
-            messages: [
+            contents: [
               {
-                role: "user",
-                content: buildPrompt(
-                  source_text, source_lang, target_lang,
-                  discipline, document_type, glossaryLines,
-                ),
+                parts: [
+                  {
+                    text: buildPrompt(
+                      source_text, source_lang, target_lang,
+                      discipline, document_type, glossaryLines,
+                    ),
+                  },
+                ],
               },
             ],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 8192,
+            },
           }),
         },
       );
 
-      if (!groqRes.ok) {
-        const errText = await groqRes.text();
-        throw new Error(`Groq ${groqRes.status}: ${errText}`);
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
+        throw new Error(`Gemini ${geminiRes.status}: ${errText}`);
       }
 
-      const groqData = await groqRes.json() as {
-        choices: Array<{ message: { content: string } }>;
+      const geminiData = await geminiRes.json() as {
+        candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
       };
 
-      translatedText = groqData.choices[0]?.message?.content?.trim() ?? "";
+      translatedText = geminiData.candidates[0]?.content?.parts[0]?.text?.trim() ?? "";
 
-      if (!translatedText) throw new Error("Groq returned empty content");
+      if (!translatedText) throw new Error("Gemini returned empty content");
     } catch (apiErr) {
-      console.error("Groq API error:", apiErr);
+      console.error("Gemini API error:", apiErr);
       await supabase
         .from("translations")
         .update({ status: "failed", error_message: String(apiErr) })
@@ -406,6 +407,14 @@ IF sourceLang = English → Turkish:
   • Turkish capitalization rules (sentence case; proper nouns only).
   • ABSOLUTE: ı İ ş ğ ç ö ü — never substitute ASCII lookalikes.
     A single i/ı error is a critical failure.
+  • DECIMAL SEPARATOR:
+    In Turkish, the decimal separator is a comma, not a period.
+    Convert ALL decimal numbers:
+    0.702 → 0,702
+    0.876 → 0,876
+    p = 0.0078 → p = 0,0078
+    Exception: keep original format inside citation strings,
+    URLs, code, and dataset names (SQuAD v1.1 stays as-is).
 
 ═══════════════════════════════════════════════════════════════════
 SECTION 6 — DISCIPLINE MODULE: ${discipline}
@@ -415,6 +424,26 @@ SECTION 6 — DISCIPLINE MODULE: ${discipline}
 - Translate the prose, not the technical stack.
 - Units, standards (ISO, IEEE), protocol names: verbatim.
 - Never invent terminology not in the GLOSSARY or established usage.
+
+EVALUATION METRICS — NEVER TRANSLATE:
+The following statistical and ML evaluation metrics must remain
+in their original English form regardless of target language:
+Recall, Recall@K, Precision, F1, MRR, NDCG, MAP, AUC, ROC,
+BLEU, ROUGE, METEOR, accuracy, baseline, benchmark, loss,
+perplexity, throughput, latency.
+Example: NEVER write "Geri çağırma" — always write "Recall".
+EXCEPTION: "accuracy" when used as a percentage result
+(e.g. "98.1% accuracy") is NOT a metric name here —
+translate it as "doğruluk oranı":
+✓ "%98,1 doğruluk oranıyla"
+✗ "%98,1 accuracy oranıyla"
+
+DOMAIN-SPECIFIC ACRONYMS — KEEP AS-IS:
+RAG, LLM, NLP, NLU, API, GPU, CPU, RAM, SQuAD, BERT, GPT,
+BGE-M3, embedding, token, chunk, fine-tuning, prompt.
+When introducing for the first time, format as:
+RAG (Geri Getirim Destekli Üretim) — NOT the reverse.
+Subsequent mentions: RAG only, no Turkish expansion.
 
 ═══════════════════════════════════════════════════════════════════
 SECTION 7 — GLOSSARY ENFORCEMENT (binding)

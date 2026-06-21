@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Copy, Check, Loader2, ArrowRightLeft, AlertCircle,
-  Languages, LogOut, TriangleAlert,
+  Languages, LogOut, TriangleAlert, FileUp, Download, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Lang } from "../../../i18n";
@@ -13,6 +13,7 @@ import { supabase } from "../../../lib/supabase";
 import { translate } from "../../../lib/translate-api";
 import { signOut } from "../../../lib/auth";
 import { useAuth } from "../../../contexts/auth-context";
+import { extractTextFromDocx, buildTranslatedDocx } from "../../../lib/docx-utils";
 
 export const Route = createFileRoute("/$lang/_protected/translate")({
   component: TranslatePage,
@@ -67,6 +68,9 @@ const PLAN_LIMITS: Record<string, number> = {
   researcher: 500_000,
 };
 
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const WORD_SOFT_LIMIT = 1500;
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 function TranslatePage() {
@@ -86,6 +90,12 @@ function TranslatePage() {
   const [result, setResult] = useState<string | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // ── Upload state ──────────────────────────────────────────────────────────
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [fileExtracting, setFileExtracting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Word balance ──────────────────────────────────────────────────────────
   const [wordsRemaining, setWordsRemaining] = useState<number | null>(null);
@@ -109,12 +119,61 @@ function TranslatePage() {
   const wordCount = sourceText.trim().split(/\s+/).filter(Boolean).length;
   const canTranslate = sourceText.trim().length > 0 && !loading;
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── File upload handler ───────────────────────────────────────────────────
+  const handleFile = async (file: File) => {
+    const isDocx = file.name.toLowerCase().endsWith(".docx") || file.type === DOCX_MIME;
+    if (!isDocx) {
+      toast.error(tr ? "Yalnızca .docx dosyaları desteklenir." : "Only .docx files are supported.");
+      return;
+    }
+    setFileExtracting(true);
+    try {
+      const text = await extractTextFromDocx(file);
+      const wc = text.trim().split(/\s+/).filter(Boolean).length;
+      setSourceText(text);
+      setUploadedFileName(file.name);
+      setResult(null);
+      setTxError(null);
+      toast.success(
+        tr
+          ? `${file.name} yüklendi — ${wc.toLocaleString()} kelime`
+          : `${file.name} uploaded — ${wc.toLocaleString()} words`,
+      );
+    } catch {
+      toast.error(tr ? "Dosya okunamadı." : "Could not read the file.");
+    } finally {
+      setFileExtracting(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  const clearFile = () => {
+    setUploadedFileName(null);
+    setSourceText("");
+    setResult(null);
+    setTxError(null);
+  };
+
+  // ── Main handlers ─────────────────────────────────────────────────────────
   const handleSwap = () => {
     setDirIdx((i) => (i === 0 ? 1 : 0));
     setSourceText("");
     setResult(null);
     setTxError(null);
+    setUploadedFileName(null);
   };
 
   const handleTranslate = async () => {
@@ -158,6 +217,15 @@ function TranslatePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleDownload = async () => {
+    if (!result) return;
+    try {
+      await buildTranslatedDocx(result, uploadedFileName ?? "translation");
+    } catch {
+      toast.error(tr ? "İndirme hatası oluştu." : "Download failed.");
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -192,7 +260,6 @@ function TranslatePage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Word balance */}
             <div className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 sm:flex">
               <span className="text-xs text-muted-foreground">{tr ? "Kalan:" : "Left:"}</span>
               <span className={`text-xs font-semibold tabular-nums ${balanceColor}`}>
@@ -200,7 +267,7 @@ function TranslatePage() {
               </span>
             </div>
 
-            <span className="hidden max-w-[140px] truncate text-sm text-muted-foreground sm:block">
+            <span className="hidden max-w-35 truncate text-sm text-muted-foreground sm:block">
               {displayName}
             </span>
 
@@ -233,7 +300,6 @@ function TranslatePage() {
             </p>
           </div>
 
-          {/* Controls: discipline + doc type */}
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={discipline}
@@ -283,6 +349,71 @@ function TranslatePage() {
 
           {/* ── Left: Source ─────────────────────────────────────────────── */}
           <div className="flex flex-col gap-3">
+
+            {/* ── Drag & drop upload zone ── */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`flex items-center justify-between rounded-xl border-2 border-dashed px-4 py-3 transition-colors ${
+                isDragging
+                  ? "border-primary bg-primary/5"
+                  : "border-border bg-card hover:border-primary/40"
+              }`}
+            >
+              <div className="flex min-w-0 items-center gap-2.5 text-sm">
+                <FileUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+                {uploadedFileName ? (
+                  <span className="truncate font-medium text-foreground" title={uploadedFileName}>
+                    {uploadedFileName}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {tr
+                      ? ".docx dosyası sürükleyin veya yükleyin"
+                      : "Drag a .docx file or click Upload"}
+                  </span>
+                )}
+              </div>
+
+              <div className="ml-3 flex shrink-0 items-center gap-2">
+                {uploadedFileName && (
+                  <button
+                    type="button"
+                    onClick={clearFile}
+                    title={tr ? "Temizle" : "Clear"}
+                    className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={fileExtracting}
+                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60"
+                >
+                  {fileExtracting
+                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                    : <FileUp className="h-3 w-3" />}
+                  {tr ? "Belge Yükle" : "Upload"}
+                </button>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+
+            {/* Textarea */}
             <div className="relative">
               <textarea
                 value={sourceText}
@@ -290,14 +421,34 @@ function TranslatePage() {
                 placeholder={tr
                   ? "Çevrilecek akademik metni buraya yapıştırın…"
                   : "Paste the academic text to translate here…"}
-                className="h-80 w-full resize-none rounded-xl border border-border bg-card p-4 pb-8 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary focus:ring-2 focus:ring-ring/30 md:h-[420px]"
+                className="h-80 w-full resize-none rounded-xl border border-border bg-card p-4 pb-8 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary focus:ring-2 focus:ring-ring/30 md:h-95"
               />
-              {/* Live word count */}
               <div className="absolute bottom-3 right-3 flex items-center gap-1 text-xs text-muted-foreground/60">
                 <span className="tabular-nums">{wordCount.toLocaleString()}</span>
                 <span>{tr ? "kelime" : "words"}</span>
               </div>
             </div>
+
+            {/* 1500-word soft limit warning */}
+            <AnimatePresence>
+              {wordCount > WORD_SOFT_LIMIT && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex items-start gap-2.5 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700 dark:border-orange-800/40 dark:bg-orange-900/20 dark:text-orange-400">
+                    <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      {tr
+                        ? "Uzun dosyalar yakında desteklenecek. Şimdilik daha kısa bir metin deneyin."
+                        : "Long files will be supported soon. Try a shorter text for now."}
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Translate button */}
             <button
@@ -321,7 +472,7 @@ function TranslatePage() {
 
           {/* ── Right: Result ─────────────────────────────────────────────── */}
           <div className="flex flex-col gap-3">
-            <div className="relative h-80 md:h-[420px]">
+            <div className="relative h-80 md:h-95">
 
               {/* Idle placeholder */}
               {!loading && !result && !txError && (
@@ -388,7 +539,7 @@ function TranslatePage() {
               </AnimatePresence>
             </div>
 
-            {/* Footer row: word stats + copy button */}
+            {/* Footer row: word stats + download + copy */}
             <div className="flex h-10 items-center justify-between">
               <AnimatePresence>
                 {result && !loading && (
@@ -409,25 +560,39 @@ function TranslatePage() {
 
               <AnimatePresence>
                 {result && !loading && (
-                  <motion.button
+                  <motion.div
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    onClick={handleCopy}
-                    className="flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-paper transition-colors hover:bg-secondary"
+                    className="flex items-center gap-2"
                   >
-                    {copied ? (
-                      <>
-                        <Check className="h-4 w-4 text-success" />
-                        {tr ? "Kopyalandı!" : "Copied!"}
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4" />
-                        {tr ? "Kopyala" : "Copy"}
-                      </>
-                    )}
-                  </motion.button>
+                    {/* Download as Word */}
+                    <button
+                      onClick={handleDownload}
+                      className="flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-paper transition-colors hover:bg-secondary"
+                    >
+                      <Download className="h-4 w-4" />
+                      {tr ? "Word olarak indir" : "Download as Word"}
+                    </button>
+
+                    {/* Copy */}
+                    <button
+                      onClick={handleCopy}
+                      className="flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-paper transition-colors hover:bg-secondary"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 text-success" />
+                          {tr ? "Kopyalandı!" : "Copied!"}
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" />
+                          {tr ? "Kopyala" : "Copy"}
+                        </>
+                      )}
+                    </button>
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>

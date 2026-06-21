@@ -118,6 +118,7 @@ function Nav() {
 /* ── Hero ────────────────────────────────────────────── */
 function Hero() {
   const { lang, t } = useLang();
+  const { user } = useAuth();
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 -z-10 bg-linear-to-b from-accent-soft/40 via-background to-background" />
@@ -148,7 +149,7 @@ function Hero() {
               {t.hero_cta1}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <a href={`/${lang}/register`}
+            <a href={user ? `/${lang}/translate` : `/${lang}/register`}
               className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-6 py-3 text-base font-medium text-foreground transition-colors hover:bg-secondary">
               <Upload className="h-4 w-4" />
               {t.hero_cta2}
