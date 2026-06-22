@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import {
   ArrowRight, FileText, BookOpen, Layers, Sparkles,
@@ -119,6 +119,17 @@ function Nav() {
 function Hero() {
   const { lang, t } = useLang();
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleFreeTrialClick = () => {
+    console.log("clicked! user =", user, "lang =", lang);
+    if (user) {
+      navigate({ to: "/$lang/translate", params: { lang } });
+    } else {
+      navigate({ to: "/$lang/register", params: { lang } });
+    }
+  };
+
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 -z-10 bg-linear-to-b from-accent-soft/40 via-background to-background" />
@@ -144,11 +155,12 @@ function Hero() {
 
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.25 }}
             className="mt-8 flex flex-wrap gap-3">
-            <a href={`/${lang}/register`}
+            <button
+              onClick={handleFreeTrialClick}
               className="group inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-base font-medium text-primary-foreground shadow-paper transition-all hover:bg-primary-hover hover:shadow-lift">
               {t.hero_cta1}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
+            </button>
             <a href={user ? `/${lang}/translate` : `/${lang}/register`}
               className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-6 py-3 text-base font-medium text-foreground transition-colors hover:bg-secondary">
               <Upload className="h-4 w-4" />

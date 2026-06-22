@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/auth-context";
 import type { Lang } from "../../i18n";
 
@@ -11,9 +11,15 @@ function ProtectedLayout() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { lang } = Route.useParams();
+  const redirected = useRef(false);
+
+  console.log("PROTECTED RENDER:", { user: !!user, loading });
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    if (!user && !redirected.current) {
+      redirected.current = true;
+      console.log("PROTECTED: no user after loading → redirect to login");
       navigate({ to: "/$lang/login", params: { lang: lang as Lang }, replace: true });
     }
   }, [user, loading, navigate, lang]);
