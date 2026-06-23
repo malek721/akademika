@@ -1,11 +1,22 @@
 import mammoth from "mammoth";
-import { Document, Packer, Paragraph, TextRun } from "docx";
+import { Document, Packer, Paragraph, TextRun, AlignmentType } from "docx";
 import { saveAs } from "file-saver";
 
 export async function extractTextFromDocx(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   const result = await mammoth.extractRawText({ arrayBuffer });
-  const paragraphs = result.value
+
+  const errors = result.messages.filter((m) => m.type === "error");
+  if (errors.length > 0) {
+    throw new Error(`Dosya okunamadı: ${errors[0].message}`);
+  }
+
+  const text = result.value.trim();
+  if (!text) {
+    throw new Error("Dosya boş veya metin içermiyor. Lütfen geçerli bir .docx dosyası yükleyin.");
+  }
+
+  const paragraphs = text
     .split("\n")
     .map((p) => p.trim())
     .filter(Boolean);
@@ -14,7 +25,8 @@ export async function extractTextFromDocx(file: File): Promise<string> {
 
 export async function buildTranslatedDocx(
   translatedText: string,
-  fileName: string
+  fileName: string,
+  rtl = false
 ): Promise<void> {
   const paragraphs = translatedText
     .split(/\n\n+/)
@@ -33,9 +45,11 @@ export async function buildTranslatedDocx(
                   text,
                   font: "Calibri",
                   size: 22,
+                  rightToLeft: rtl,
                 }),
               ],
               spacing: { line: 276, after: 120 },
+              ...(rtl && { alignment: AlignmentType.RIGHT, bidirectional: true }),
             })
         ),
       },

@@ -14,6 +14,7 @@ import { translate } from "../../../lib/translate-api";
 import { signOut } from "../../../lib/auth";
 import { useAuth } from "../../../contexts/auth-context";
 import { extractTextFromDocx, buildTranslatedDocx } from "../../../lib/docx-utils";
+import { PLAN_LIMITS } from "../../../lib/constants";
 
 export const Route = createFileRoute("/$lang/_protected/translate")({
   component: TranslatePage,
@@ -62,11 +63,6 @@ const DOCUMENT_TYPES = [
   { value: "assignment",      tr: "Ödev",        en: "Assignment"      },
 ];
 
-const PLAN_LIMITS: Record<string, number> = {
-  free: 5_000,
-  student: 50_000,
-  researcher: 500_000,
-};
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const WORD_SOFT_LIMIT = 1500;
@@ -107,9 +103,9 @@ function TranslatePage() {
       supabase.from("profiles").select("plan").eq("id", user.id).single(),
       supabase.from("usage").select("words_used").eq("user_id", user.id).eq("period", period).single(),
     ]).then(([pRes, uRes]) => {
-      const plan = (pRes.data?.plan as string) ?? "free";
+      const plan = pRes.data?.plan ?? "free";
       const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
-      const used = (uRes.data?.words_used as number) ?? 0;
+      const used = uRes.data?.words_used ?? 0;
       setWordsRemaining(limit - used);
     });
   }, [user]);
@@ -217,10 +213,12 @@ function TranslatePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const RTL_LANGS = new Set(["Arabic", "Hebrew", "Persian", "Urdu"]);
+
   const handleDownload = async () => {
     if (!result) return;
     try {
-      await buildTranslatedDocx(result, uploadedFileName ?? "translation");
+      await buildTranslatedDocx(result, uploadedFileName ?? "translation", RTL_LANGS.has(dir.targetLang));
     } catch {
       toast.error(tr ? "İndirme hatası oluştu." : "Download failed.");
     }
@@ -235,7 +233,12 @@ function TranslatePage() {
     }
   };
 
-  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
+  const displayName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email?.split("@")[0] ||
+    "";
+
 
   // ── Balance badge style ───────────────────────────────────────────────────
   const balanceColor =
@@ -250,11 +253,11 @@ function TranslatePage() {
 
       {/* ── App bar ─────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
-          <div className="flex items-center gap-6">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 md:px-6">
+          <div className="flex shrink-0 items-center gap-4">
             <a href={`/${lang}`}><Logo /></a>
-            <span className="hidden h-5 w-px bg-border sm:block" />
-            <span className="hidden text-sm font-medium text-primary sm:block">
+            <span className="block h-5 w-px bg-border max-sm:hidden" />
+            <span className="block text-sm font-medium text-primary max-sm:hidden">
               {tr ? "Çeviri" : "Translate"}
             </span>
           </div>
@@ -267,7 +270,7 @@ function TranslatePage() {
               </span>
             </div>
 
-            <span className="hidden max-w-35 truncate text-sm text-muted-foreground sm:block">
+            <span className="max-w-35 max-sm:hidden truncate text-sm text-muted-foreground">
               {displayName}
             </span>
 
@@ -278,14 +281,14 @@ function TranslatePage() {
               className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm text-foreground/70 transition-colors hover:bg-secondary hover:text-foreground"
             >
               <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{tr ? "Çıkış" : "Sign out"}</span>
+              <span className="max-sm:hidden">{tr ? "Çıkış" : "Sign out"}</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* ── Content ─────────────────────────────────────────────────────── */}
-      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
 
         {/* Page title + controls row */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -300,11 +303,11 @@ function TranslatePage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
             <select
               value={discipline}
               onChange={(e) => setDiscipline(e.target.value)}
-              className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+              className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 md:flex-none"
             >
               {DISCIPLINES.map((d) => (
                 <option key={d.value} value={d.value}>
@@ -316,7 +319,7 @@ function TranslatePage() {
             <select
               value={documentType}
               onChange={(e) => setDocumentType(e.target.value)}
-              className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+              className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 md:flex-none"
             >
               {DOCUMENT_TYPES.map((d) => (
                 <option key={d.value} value={d.value}>
@@ -540,7 +543,7 @@ function TranslatePage() {
             </div>
 
             {/* Footer row: word stats + download + copy */}
-            <div className="flex h-10 items-center justify-between">
+            <div className="flex min-h-10 flex-wrap items-center justify-between gap-2">
               <AnimatePresence>
                 {result && !loading && (
                   <motion.span
@@ -564,21 +567,22 @@ function TranslatePage() {
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="flex items-center gap-2"
+                    className="flex flex-wrap items-center gap-2"
                   >
                     {/* Download as Word */}
                     <button
                       onClick={handleDownload}
-                      className="flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-paper transition-colors hover:bg-secondary"
+                      className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-paper transition-colors hover:bg-secondary"
                     >
                       <Download className="h-4 w-4" />
-                      {tr ? "Word olarak indir" : "Download as Word"}
+                      <span className="max-sm:hidden">{tr ? "Word olarak indir" : "Download as Word"}</span>
+                      <span className="sm:hidden">{tr ? "İndir" : "Download"}</span>
                     </button>
 
                     {/* Copy */}
                     <button
                       onClick={handleCopy}
-                      className="flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-paper transition-colors hover:bg-secondary"
+                      className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-paper transition-colors hover:bg-secondary"
                     >
                       {copied ? (
                         <>

@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type SupabaseClient = ReturnType<typeof createClient>;
 
+// Keep in sync with src/lib/constants.ts — Deno cannot import from src/
 const PLAN_LIMITS: Record<string, number> = {
   free: 5_000,
   student: 50_000,

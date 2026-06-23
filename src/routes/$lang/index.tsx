@@ -64,51 +64,55 @@ function Nav() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <a href={`/${lang}`}><Logo /></a>
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6 md:py-4">
+        <a href={`/${lang}`} className="shrink-0"><Logo /></a>
 
-        <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
+        <nav className="flex items-center gap-8 text-sm text-muted-foreground max-md:hidden">
           <a href="#ozellikler" className="transition-colors hover:text-foreground">{t.nav_features}</a>
           <a href="#disiplinler" className="transition-colors hover:text-foreground">{t.nav_disciplines}</a>
           <a href="#fiyatlandirma" className="transition-colors hover:text-foreground">{t.nav_pricing}</a>
           <a href="#sss" className="transition-colors hover:text-foreground">{t.nav_faq}</a>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2">
           {user ? (
             <>
+              <span className="text-sm text-muted-foreground max-sm:hidden">
+                {user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0]}
+              </span>
               <a
                 href={`/${lang}/translate`}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover md:px-4 md:py-2"
               >
                 <Languages className="h-4 w-4" />
-                {lang === "tr" ? "Çeviri" : "Translate"}
+                <span className="max-sm:hidden">{lang === "tr" ? "Çeviri" : "Translate"}</span>
               </a>
-              <span className="hidden text-sm text-muted-foreground sm:block">
-                {user.user_metadata?.full_name || user.email?.split("@")[0]}
-              </span>
               <button
                 onClick={handleSignOut}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary hover:text-foreground"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary hover:text-foreground"
               >
                 <LogOut className="h-4 w-4" />
-                {lang === "tr" ? "Çıkış" : "Sign out"}
+                <span className="max-sm:hidden">{lang === "tr" ? "Çıkış" : "Sign out"}</span>
               </button>
             </>
           ) : (
             <>
-              <a href={`/${lang}/login`} className="hidden text-sm font-medium text-foreground/80 hover:text-foreground sm:block">
+              <a href={`/${lang}/login`} className="text-sm font-medium text-foreground/80 hover:text-foreground max-sm:hidden">
                 {t.nav_login}
               </a>
               <a
                 href={`/${lang}/register`}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover md:px-4 md:py-2"
               >
-                {t.nav_cta} <ArrowRight className="h-4 w-4" />
+                <span className="max-sm:hidden">{t.nav_cta}</span>
+                <span className="sm:hidden">{lang === "tr" ? "Dene" : "Try"}</span>
+                <ArrowRight className="h-4 w-4" />
               </a>
             </>
           )}
-          <LangToggle lang={lang} />
+          <div className="max-sm:hidden">
+            <LangToggle lang={lang} />
+          </div>
         </div>
       </div>
     </header>
@@ -122,7 +126,6 @@ function Hero() {
   const navigate = useNavigate();
 
   const handleFreeTrialClick = () => {
-    console.log("clicked! user =", user, "lang =", lang);
     if (user) {
       navigate({ to: "/$lang/translate", params: { lang } });
     } else {
@@ -292,8 +295,8 @@ function Compare() {
     <section className="bg-secondary/30 py-24">
       <div className="mx-auto max-w-5xl px-6">
         <SectionHeader eyebrow={t.cmp_eyebrow} title={t.cmp_title} sub={t.cmp_sub} />
-        <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-paper">
-          <table className="w-full text-sm">
+        <div className="mt-12 overflow-x-auto rounded-xl border border-border bg-card shadow-paper">
+          <table className="w-full min-w-135 text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
                 <th className="px-5 py-4 text-left font-medium text-muted-foreground">{t.cmp_feature_col}</th>

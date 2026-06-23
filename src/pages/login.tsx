@@ -8,6 +8,8 @@ import { Logo } from "../components/logo";
 import { LangToggle } from "../components/lang-toggle";
 import { signInWithEmail, signInWithGoogle } from "../lib/auth";
 import { useAuth } from "../contexts/auth-context";
+import { Spinner } from "../components/ui/spinner";
+import { GoogleIcon } from "../components/ui/google-icon";
 
 function useLang() {
   const { lang } = useParams({ strict: false });
@@ -135,6 +137,8 @@ function LoginForm({ lang }: { lang: Lang }) {
         type="button"
         onClick={handleGoogle}
         disabled={googleLoading}
+        aria-label={t.login_google}
+        aria-busy={googleLoading}
         className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-paper transition-colors hover:bg-secondary disabled:opacity-70"
       >
         {googleLoading ? <Spinner /> : <><GoogleIcon />{t.login_google}</>}
@@ -147,8 +151,9 @@ function LoginForm({ lang }: { lang: Lang }) {
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-foreground">{t.login_email_label}</label>
+        <label htmlFor="login-email" className="text-sm font-medium text-foreground">{t.login_email_label}</label>
         <input
+          id="login-email"
           type="email"
           required
           value={email}
@@ -160,13 +165,14 @@ function LoginForm({ lang }: { lang: Lang }) {
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-foreground">{t.login_pass_label}</label>
+          <label htmlFor="login-password" className="text-sm font-medium text-foreground">{t.login_pass_label}</label>
           <a href="#" className="text-xs font-medium text-primary underline-offset-4 hover:underline">
             {t.login_forgot}
           </a>
         </div>
         <div className="relative">
           <input
+            id="login-password"
             type={show ? "text" : "password"}
             required
             value={password}
@@ -177,6 +183,7 @@ function LoginForm({ lang }: { lang: Lang }) {
           <button
             type="button"
             onClick={() => setShow((v) => !v)}
+            aria-label={show ? (lang === "tr" ? "Şifreyi gizle" : "Hide password") : (lang === "tr" ? "Şifreyi göster" : "Show password")}
             className="absolute inset-y-0 right-3 flex items-center text-muted-foreground/60 hover:text-foreground"
           >
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -192,6 +199,7 @@ function LoginForm({ lang }: { lang: Lang }) {
       <button
         type="submit"
         disabled={loading}
+        aria-busy={loading}
         className="flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-paper transition-colors hover:bg-primary-hover disabled:opacity-70"
       >
         {loading ? <Spinner /> : t.login_submit}
@@ -221,24 +229,4 @@ function translateAuthError(message: string, lang: Lang): string {
   }
 
   return lang === "tr" ? "Bir hata oluştu. Tekrar deneyin." : "An error occurred. Please try again.";
-}
-
-function Spinner() {
-  return (
-    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-    </svg>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18">
-      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4" />
-      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853" />
-      <path d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05" />
-      <path d="M9 3.583c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.962L3.964 6.294C4.672 4.167 6.656 3.583 9 3.583z" fill="#EA4335" />
-    </svg>
-  );
 }
