@@ -22,6 +22,30 @@ function json(data: unknown, status = 200) {
   });
 }
 
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 2000;
+
+async function callGeminiWithRetry(prompt: string, apiKey: string, retries = 0): Promise<Response> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
+      }),
+    },
+  );
+
+  if ((response.status === 503 || response.status === 429) && retries < MAX_RETRIES) {
+    await new Promise((r) => setTimeout(r, RETRY_DELAY));
+    return callGeminiWithRetry(prompt, apiKey, retries + 1);
+  }
+
+  return response;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -149,31 +173,11 @@ Deno.serve(async (req: Request) => {
     let translatedText: string;
 
     try {
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: buildPrompt(
-                      source_text, source_lang, target_lang,
-                      discipline, document_type, glossaryLines,
-                    ),
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.3,
-              maxOutputTokens: 8192,
-            },
-          }),
-        },
+      const prompt = buildPrompt(
+        source_text, source_lang, target_lang,
+        discipline, document_type, glossaryLines,
       );
+      const geminiRes = await callGeminiWithRetry(prompt, geminiKey);
 
       if (!geminiRes.ok) {
         const errText = await geminiRes.text();

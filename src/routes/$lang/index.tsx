@@ -97,15 +97,20 @@ function Nav() {
             </>
           ) : (
             <>
-              <a href={`/${lang}/login`} className="text-sm font-medium text-foreground/80 hover:text-foreground max-sm:hidden">
+              <a href={`/${lang}/login`} className="text-sm font-medium text-foreground/80 hover:text-foreground max-md:hidden">
                 {t.nav_login}
               </a>
               <a
-                href={`/${lang}/register`}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover md:px-4 md:py-2"
+                href={`/${lang}/login`}
+                className="inline-flex min-h-11 items-center rounded-md border border-border px-3 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary hover:text-foreground md:hidden"
               >
-                <span className="max-sm:hidden">{t.nav_cta}</span>
-                <span className="sm:hidden">{lang === "tr" ? "Dene" : "Try"}</span>
+                {lang === "tr" ? "Giriş Yap" : "Log in"}
+              </a>
+              <a
+                href={`/${lang}/register`}
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover md:px-4 md:py-2 max-md:hidden"
+              >
+                {t.nav_cta}
                 <ArrowRight className="h-4 w-4" />
               </a>
             </>
