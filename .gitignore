@@ -26,6 +26,9 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Vercel build output (generated at deploy time — never commit)
+.vercel
+
 # Glossary source files (large Excel files — import locally, don't commit)
 data/
 
