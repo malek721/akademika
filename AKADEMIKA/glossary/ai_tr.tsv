@@ -1,0 +1,19 @@
+source_term	target_term	notes
+retrieval	Geri Getirim | Bilgi Erişimi	(a|b) lock one per document; this project prefers Geri Getirim
+embedding	embedding	retained loanword (keep as-is)
+chunk	chunk | parça	(a|b); keep "chunk" in technical contexts
+chunking	chunk'lama | parçalama	follow the choice made for "chunk"
+hallucination	halüsinasyon	established TR usage
+prompt	prompt	retained loanword
+fine-tuning	ince ayar | fine-tuning	(a|b); "ince ayar" preferred in TR academic prose
+inference	çıkarım	
+pipeline	işlem hattı | pipeline	(a|b)
+encoder	kodlayıcı	
+decoder	kod çözücü	
+attention	dikkat	"attention mekanizması"
+language model	dil modeli	but LLM stays "LLM" (acronym)
+knowledge base	bilgi tabanı	
+ground truth	temel doğruluk | ground truth	(a|b)
+downstream task	alt görev	
+zero-shot	sıfır-atış | zero-shot	(a|b); keep "zero-shot" if venue expects it
+few-shot	az-atış | few-shot	follow the choice made for zero-shot (consistency)

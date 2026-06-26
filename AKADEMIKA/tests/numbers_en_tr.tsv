@@ -1,0 +1,6 @@
+input	expected_fragment	checks
+The model reached 98.1% accuracy.	%98,1 doğruluk	percent-before + decimal-comma + accuracy→doğruluk
+A Recall@5 of 0.876 was observed.	0,876 Recall@5	decimal-comma + metric kept
+The corpus has 1,234,567 tokens.	1.234.567 token	thousands→period + token retained
+Mean length was 12.5 words (n = 1,000).	12,5	decimal-comma + thousands→period in n
+Results were significant (p = 0.0078).	p = 0,0078	stat notation decimal-comma

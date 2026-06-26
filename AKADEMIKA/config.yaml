@@ -1,0 +1,23 @@
+# AKADEMIKA · CONFIG  — single source of truth; the assembler reads ONLY this.
+core: core.md
+compiled_output: compiled_prompt.md
+source: source.txt
+
+translation:
+  source: English
+  target: Turkish
+  variant: TR-TDK
+  discipline: NLP
+  document_type: thesis
+  tn_mode: off
+  citation_style: verbatim
+  reference_title_policy: keep
+  intext_citation_locale: localize
+
+# Load ONLY these modules into the compiled prompt (omit a line to skip it).
+modules:
+  language: language/en_tr.md
+  discipline: discipline/nlp.md
+  project: project/thesis_q1.md
+  glossary: glossary/ai_tr.tsv
+  examples: examples/en_tr.md
