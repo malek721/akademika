@@ -10,11 +10,13 @@ import type { Lang } from "../../../i18n";
 import { Logo } from "../../../components/logo";
 import { LangToggle } from "../../../components/lang-toggle";
 import { supabase } from "../../../lib/supabase";
-import { translate } from "../../../lib/translate-api";
+import { translateViaEdgeFunction } from "../../../lib/translate-api";
 import { signOut } from "../../../lib/auth";
 import { useAuth } from "../../../contexts/auth-context";
 import { extractTextFromDocx, buildTranslatedDocx } from "../../../lib/docx-utils";
 import { PLAN_LIMITS } from "../../../lib/constants";
+import { countWords } from "../../../lib/text-utils";
+import { displayName } from "../../../lib/user-utils";
 import { TranslationForm } from "../../../components/translation-form";
 
 export const Route = createFileRoute("/$lang/_protected/translate")({
@@ -113,7 +115,7 @@ function TranslatePage() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const dir = DIRECTIONS[dirIdx];
-  const wordCount = sourceText.trim().split(/\s+/).filter(Boolean).length;
+  const wordCount = countWords(sourceText);
   const canTranslate = sourceText.trim().length > 0 && !loading;
 
   // ── File upload handler ───────────────────────────────────────────────────
@@ -126,7 +128,7 @@ function TranslatePage() {
     setFileExtracting(true);
     try {
       const text = await extractTextFromDocx(file);
-      const wc = text.trim().split(/\s+/).filter(Boolean).length;
+      const wc = countWords(text);
       setSourceText(text);
       setUploadedFileName(file.name);
       setResult(null);
@@ -180,7 +182,7 @@ function TranslatePage() {
     setResult(null);
 
     try {
-      const res = await translate({
+      const res = await translateViaEdgeFunction({
         source_text: sourceText,
         source_lang: dir.sourceLang,
         target_lang: dir.targetLang,
@@ -234,11 +236,7 @@ function TranslatePage() {
     }
   };
 
-  const displayName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email?.split("@")[0] ||
-    "";
+  const userName = displayName(user);
 
 
   // ── Balance badge style ───────────────────────────────────────────────────
@@ -272,7 +270,7 @@ function TranslatePage() {
             </div>
 
             <span className="max-w-35 max-sm:hidden truncate text-sm text-muted-foreground">
-              {displayName}
+              {userName}
             </span>
 
             <LangToggle lang={L} />

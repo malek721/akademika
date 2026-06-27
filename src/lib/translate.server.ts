@@ -1,6 +1,7 @@
 import process from "node:process";
 
 import { assemblePrompt, type JobConfig } from "./assemble-prompt.server";
+import { countWords } from "./text-utils";
 
 // Calls Gemini via the REST API — the same way the project's Supabase Edge Function
 // (supabase/functions/translate/index.ts) does it: model gemini-2.5-flash, GEMINI_API_KEY.
@@ -85,7 +86,7 @@ export async function runTranslation(
     console.warn("[translate] output hit maxOutputTokens — translation may be truncated");
   }
 
-  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  const wordCount = countWords(text);
 
   return {
     translation,

@@ -15,7 +15,7 @@ export interface TranslateResponse {
   words_remaining: number;
 }
 
-export async function translate(payload: TranslateRequest): Promise<TranslateResponse> {
+export async function translateViaEdgeFunction(payload: TranslateRequest): Promise<TranslateResponse> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated");
 

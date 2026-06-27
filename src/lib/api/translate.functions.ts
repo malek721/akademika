@@ -23,7 +23,7 @@ const TranslateInputSchema = z.object({
   intextCitationLocale: z.string().default("localize"),
 });
 
-export const translate = createServerFn({ method: "POST" })
+export const translateViaServerFn = createServerFn({ method: "POST" })
   .inputValidator(TranslateInputSchema)
   .handler(async ({ data }) => {
     return runTranslation(data);

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
-import { translate } from "../lib/api/translate.functions";
+import { translateViaServerFn } from "../lib/api/translate.functions";
 
 // Minimal harness for exercising the AKADEMIKA translation server function.
 // Drop into any route, e.g.:  <TranslationForm />
@@ -46,7 +46,7 @@ export function TranslationForm() {
 
     setLoading(true);
     try {
-      const res = await translate({
+      const res = await translateViaServerFn({
         data: { text, sourceLang, targetLang, discipline, documentType, tnMode },
       });
       setResult(res.translation);

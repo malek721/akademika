@@ -12,6 +12,7 @@ import { Logo } from "../../components/logo";
 import { LangToggle } from "../../components/lang-toggle";
 import { useAuth } from "../../contexts/auth-context";
 import { signOut } from "../../lib/auth";
+import { displayName } from "../../lib/user-utils";
 
 export const Route = createFileRoute("/$lang/")({
   head: () => ({
@@ -78,7 +79,7 @@ function Nav() {
           {user ? (
             <>
               <span className="text-sm text-muted-foreground max-sm:hidden">
-                {user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0]}
+                {displayName(user)}
               </span>
               <a
                 href={`/${lang}/translate`}
