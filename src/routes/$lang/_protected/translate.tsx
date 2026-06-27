@@ -17,7 +17,6 @@ import { extractTextFromDocx, buildTranslatedDocx } from "../../../lib/docx-util
 import { PLAN_LIMITS } from "../../../lib/constants";
 import { countWords } from "../../../lib/text-utils";
 import { displayName } from "../../../lib/user-utils";
-import { TranslationForm } from "../../../components/translation-form";
 
 export const Route = createFileRoute("/$lang/_protected/translate")({
   component: TranslatePage,
@@ -600,14 +599,6 @@ function TranslatePage() {
               </AnimatePresence>
             </div>
           </div>
-        </div>
-
-        {/* ── AKADEMIKA test harness (Claude + modular prompt) ───────────────── */}
-        <div className="mt-10 border-t border-dashed border-border pt-6">
-          <p className="mb-2 px-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            AKADEMIKA · Claude test harness
-          </p>
-          <TranslationForm />
         </div>
       </main>
     </div>

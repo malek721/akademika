@@ -1,3 +1,6 @@
+// DORMANT: AKADEMIKA modular-prompt path. Not wired into production UI.
+// Path A (Edge Function) is the active translator. Re-enable by rendering
+// <TranslationForm/> in a route when higher prompt quality is needed.
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
