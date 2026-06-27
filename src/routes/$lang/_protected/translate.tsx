@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Copy, Check, Loader2, ArrowRightLeft, AlertCircle,
@@ -9,14 +9,14 @@ import { toast } from "sonner";
 import type { Lang } from "../../../i18n";
 import { Logo } from "../../../components/logo";
 import { LangToggle } from "../../../components/lang-toggle";
-import { supabase } from "../../../lib/supabase";
 import { translateViaEdgeFunction } from "../../../lib/translate-api";
 import { signOut } from "../../../lib/auth";
 import { useAuth } from "../../../contexts/auth-context";
-import { extractTextFromDocx, buildTranslatedDocx } from "../../../lib/docx-utils";
-import { PLAN_LIMITS } from "../../../lib/constants";
+import { buildTranslatedDocx } from "../../../lib/docx-utils";
 import { countWords } from "../../../lib/text-utils";
 import { displayName } from "../../../lib/user-utils";
+import { useDocxUpload } from "../../../hooks/use-docx-upload";
+import { useWordBalance } from "../../../hooks/use-word-balance";
 
 export const Route = createFileRoute("/$lang/_protected/translate")({
   component: TranslatePage,
@@ -66,7 +66,6 @@ const DOCUMENT_TYPES = [
 ];
 
 
-const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const WORD_SOFT_LIMIT = 1500;
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -89,81 +88,38 @@ function TranslatePage() {
   const [txError, setTxError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // ── Upload state ──────────────────────────────────────────────────────────
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [fileExtracting, setFileExtracting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // ── Upload (docx) ─────────────────────────────────────────────────────────
+  const {
+    uploadedFileName,
+    isDragging,
+    fileExtracting,
+    fileInputRef,
+    handleFile,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    clearFile,
+  } = useDocxUpload({
+    tr,
+    onText: (text) => {
+      setSourceText(text);
+      setResult(null);
+      setTxError(null);
+    },
+    onClear: () => {
+      setSourceText("");
+      setResult(null);
+      setTxError(null);
+    },
+  });
 
   // ── Word balance ──────────────────────────────────────────────────────────
-  const [wordsRemaining, setWordsRemaining] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    const period = new Date().toISOString().slice(0, 7);
-    Promise.all([
-      supabase.from("profiles").select("plan").eq("id", user.id).single(),
-      supabase.from("usage").select("words_used").eq("user_id", user.id).eq("period", period).single(),
-    ]).then(([pRes, uRes]) => {
-      const plan = pRes.data?.plan ?? "free";
-      const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
-      const used = uRes.data?.words_used ?? 0;
-      setWordsRemaining(limit - used);
-    });
-  }, [user]);
+  const { wordsRemaining, setWordsRemaining } = useWordBalance(user);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const dir = DIRECTIONS[dirIdx];
   const wordCount = countWords(sourceText);
   const canTranslate = sourceText.trim().length > 0 && !loading;
-
-  // ── File upload handler ───────────────────────────────────────────────────
-  const handleFile = async (file: File) => {
-    const isDocx = file.name.toLowerCase().endsWith(".docx") || file.type === DOCX_MIME;
-    if (!isDocx) {
-      toast.error(tr ? "Yalnızca .docx dosyaları desteklenir." : "Only .docx files are supported.");
-      return;
-    }
-    setFileExtracting(true);
-    try {
-      const text = await extractTextFromDocx(file);
-      const wc = countWords(text);
-      setSourceText(text);
-      setUploadedFileName(file.name);
-      setResult(null);
-      setTxError(null);
-      toast.success(
-        tr
-          ? `${file.name} yüklendi — ${wc.toLocaleString()} kelime`
-          : `${file.name} uploaded — ${wc.toLocaleString()} words`,
-      );
-    } catch {
-      toast.error(tr ? "Dosya okunamadı." : "Could not read the file.");
-    } finally {
-      setFileExtracting(false);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => setIsDragging(false);
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  };
-
-  const clearFile = () => {
-    setUploadedFileName(null);
-    setSourceText("");
-    setResult(null);
-    setTxError(null);
-  };
 
   // ── Main handlers ─────────────────────────────────────────────────────────
   const handleSwap = () => {
