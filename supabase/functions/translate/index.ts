@@ -46,6 +46,19 @@ async function callGeminiWithRetry(prompt: string, apiKey: string, retries = 0):
   return response;
 }
 
+/**
+ * Glossary query direction from the source language. The frontend sends the
+ * language NAME ("Turkish"/"English"), not a code, so a startsWith("tr") check
+ * fails ("turkish" begins with "tu"). Match the name ("turk"/"türk") or the bare
+ * "tr" code; anything else is treated as English-source.
+ */
+function directionFromTurkish(sourceLang: string): "tr2en" | "en2tr" {
+  const sl = sourceLang.trim().toLowerCase();
+  const sourceIsTurkish =
+    sl === "tr" || sl.startsWith("turk") || sl.startsWith("türk");
+  return sourceIsTurkish ? "tr2en" : "en2tr";
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -153,9 +166,7 @@ Deno.serve(async (req: Request) => {
     const translationId: string = record.id;
 
     // ── 6.5. Glossary term matching ───────────────────────────
-    const direction: "tr2en" | "en2tr" = source_lang.toLowerCase().startsWith("tr")
-      ? "tr2en"
-      : "en2tr";
+    const direction = directionFromTurkish(source_lang);
     const glossaryLines = await matchGlossaryTerms(
       supabase, source_text, discipline, direction,
     );
@@ -244,6 +255,43 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Maps the UI discipline slug → the glossary table's `field` category.
+// The TÜBA glossary taxonomy differs from the UI discipline list, so most
+// disciplines need an explicit mapping (or null = no glossary coverage).
+const DISCIPLINE_TO_FIELD: Record<string, string | null> = {
+  // exact matches — own TÜBA field
+  "biyoloji": "biyoloji",
+  "çevre": "çevre",
+  "fizik": "fizik",
+  "hukuk": "hukuk",
+  "iktisat": "iktisat",
+  "kimya": "kimya",
+  "matematik": "matematik",
+  "mühendislik": "mühendislik",
+  "psikoloji": "psikoloji",
+  "siyaset": "siyaset",
+  // diacritic-only fix (DB was imported without Turkish chars)
+  "eğitim": "egitim",
+  "tıp": "tip",
+  // taxonomy rename (UI name differs from TÜBA category name)
+  "bilgisayar": "bilişim",
+  "ziraat": "tarım",
+  // approximate — no dedicated field; closest available domain used
+  "eczacılık": "tip",
+  "hemşirelik": "tip",
+  "veterinerlik": "tarım",
+  "iletişim": "genel",
+  "işletme": "mühendislik",
+  "mimarlık": "i̇nşaat",
+  "sosyoloji": "genel",
+  // null — no glossary coverage; skip DB query
+  "arkeoloji": null,
+  "coğrafya": null,
+  "dilbilim": null,
+  "felsefe": null,
+  "tarih": null,
+};
+
 /**
  * Finds glossary terms that actually appear in sourceText and returns
  * them as "term_source => term_target" strings (max 60).
@@ -262,7 +310,13 @@ async function matchGlossaryTerms(
   direction: "tr2en" | "en2tr",
   maxTerms = 60,
 ): Promise<string[]> {
-  const normalizedField = field.trim().toLowerCase();
+  const mappedField = DISCIPLINE_TO_FIELD[field.trim().toLowerCase()];
+  if (mappedField === null) return []; // no glossary for this discipline
+  if (mappedField === undefined) {
+    // unknown discipline — fallback to direct lowercase
+    console.warn("[glossary] unmapped discipline:", field);
+  }
+  const normalizedField = mappedField ?? field.trim().toLowerCase();
 
   const { data, error } = await supabase
     .from("glossary")
@@ -309,6 +363,10 @@ async function matchGlossaryTerms(
 
     matches.push(`${term_source} => ${target}`);
   }
+
+  console.log(
+    `[glossary] discipline="${field}" → mapped="${normalizedField}" → ${data?.length ?? 0} rows fetched, ${matches.length} terms matched in text`,
+  );
 
   return matches;
 }

@@ -4,8 +4,12 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "precompile-prompts": "tsx scripts/precompile-prompts.ts",
+    "predev": "tsx scripts/precompile-prompts.ts",
     "dev": "vite dev",
+    "prebuild": "tsx scripts/precompile-prompts.ts",
     "build": "vite build",
+    "prebuild:dev": "tsx scripts/precompile-prompts.ts",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
