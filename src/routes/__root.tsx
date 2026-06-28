@@ -79,6 +79,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "Akademika Çeviri — Akademisyen gibi çeviren yapay zekâ" },
+      {
+        name: "description",
+        content:
+          "Disipline özel terminoloji, atıf koruma ve tez modu ile makale, ödev ve tezlerinizi akademisyen gibi çevirin. Google Translate gibi değil. Ücretsiz dene.",
+      },
+      { property: "og:title", content: "Akademika Çeviri — Akademisyen gibi çeviren yapay zekâ" },
+      {
+        property: "og:description",
+        content:
+          "Disipline özel terminoloji, atıf koruma ve tez modu ile makale, ödev ve tezlerinizi akademisyen gibi çevirin. Google Translate gibi değil. Ücretsiz dene.",
+      },
+      { property: "og:image", content: "https://akademika-ai.vercel.app/og-image.png" },
+      { property: "og:url", content: "https://akademika-ai.vercel.app" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },

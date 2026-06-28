@@ -18,7 +18,21 @@ export const Route = createFileRoute("/$lang/")({
   head: () => ({
     meta: [
       { title: "Akademika Çeviri — Akademisyen gibi çeviren yapay zekâ" },
-      { name: "description", content: "Akademik bağlamı ve terminolojiyi koruyan yapay zekâ destekli çeviri platformu." },
+      {
+        name: "description",
+        content:
+          "Disipline özel terminoloji, atıf koruma ve tez modu ile makale, ödev ve tezlerinizi akademisyen gibi çevirin. Google Translate gibi değil. Ücretsiz dene.",
+      },
+      { property: "og:title", content: "Akademika Çeviri — Akademisyen gibi çeviren yapay zekâ" },
+      {
+        property: "og:description",
+        content:
+          "Disipline özel terminoloji, atıf koruma ve tez modu ile makale, ödev ve tezlerinizi akademisyen gibi çevirin. Google Translate gibi değil. Ücretsiz dene.",
+      },
+      { property: "og:image", content: "https://akademika-ai.vercel.app/og-image.png" },
+      { property: "og:url", content: "https://akademika-ai.vercel.app" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Landing,
