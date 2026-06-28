@@ -260,18 +260,25 @@ function TranslatePage() {
             </p>
           </div>
 
-          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
-            <select
-              value={discipline}
-              onChange={(e) => setDiscipline(e.target.value)}
-              className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 md:flex-none"
-            >
-              {DISCIPLINES.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {tr ? d.tr : d.en}
-                </option>
-              ))}
-            </select>
+          <div className="flex w-full flex-wrap items-start gap-2 md:w-auto">
+            <div className="flex flex-1 flex-col gap-1 md:flex-none">
+              <select
+                value={discipline}
+                onChange={(e) => setDiscipline(e.target.value)}
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+              >
+                {DISCIPLINES.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {tr ? d.tr : d.en}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {tr
+                  ? "Doğru terminoloji için metninize en uygun alanı seçin"
+                  : "Select the field closest to your text for accurate terminology"}
+              </p>
+            </div>
 
             <select
               value={documentType}
