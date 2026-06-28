@@ -19,6 +19,9 @@ import { useDocxUpload } from "../../../hooks/use-docx-upload";
 import { useWordBalance } from "../../../hooks/use-word-balance";
 
 export const Route = createFileRoute("/$lang/_protected/translate")({
+  head: () => ({
+    meta: [{ name: "robots", content: "noindex, nofollow" }],
+  }),
   component: TranslatePage,
 });
 
