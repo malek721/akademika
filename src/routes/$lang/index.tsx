@@ -15,7 +15,7 @@ import { signOut } from "../../lib/auth";
 import { displayName } from "../../lib/user-utils";
 
 export const Route = createFileRoute("/$lang/")({
-  head: () => ({
+  head: ({ params }) => ({
     meta: [
       { title: "Akademika Çeviri — Akademisyen gibi çeviren yapay zekâ" },
       {
@@ -34,7 +34,12 @@ export const Route = createFileRoute("/$lang/")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
-    links: [{ rel: "canonical", href: "https://akademika-ai.vercel.app/tr" }],
+    links: [
+      { rel: "canonical", href: `https://akademika-ai.vercel.app/${params.lang === "en" ? "en" : "tr"}` },
+      { rel: "alternate", hrefLang: "tr", href: "https://akademika-ai.vercel.app/tr" },
+      { rel: "alternate", hrefLang: "en", href: "https://akademika-ai.vercel.app/en" },
+      { rel: "alternate", hrefLang: "x-default", href: "https://akademika-ai.vercel.app/tr" },
+    ],
   }),
   component: Landing,
 });
