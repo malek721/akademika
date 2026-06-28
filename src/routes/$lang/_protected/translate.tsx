@@ -140,11 +140,11 @@ function TranslatePage() {
 
   // ── Main handlers ─────────────────────────────────────────────────────────
   const handleSwap = () => {
+    // Preserve the source text — only swap the language direction and clear the
+    // now-stale result/error.
     setDirIdx((i) => (i === 0 ? 1 : 0));
-    setSourceText("");
     setResult(null);
     setTxError(null);
-    setUploadedFileName(null);
   };
 
   const handleTranslate = async () => {
@@ -413,8 +413,19 @@ function TranslatePage() {
                 placeholder={tr
                   ? "Çevrilecek akademik metni buraya yapıştırın…"
                   : "Paste the academic text to translate here…"}
-                className="h-80 w-full resize-none rounded-xl border border-border bg-card p-4 pb-8 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary focus:ring-2 focus:ring-ring/30 md:h-95"
+                className="h-80 w-full resize-none rounded-xl border border-border bg-card p-4 pb-8 pr-10 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary focus:ring-2 focus:ring-ring/30 md:h-95"
               />
+              {sourceText && (
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  title={tr ? "Temizle" : "Clear"}
+                  aria-label={tr ? "Temizle" : "Clear"}
+                  className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
               <div className="absolute bottom-3 right-3 flex items-center gap-1 text-xs text-muted-foreground/60">
                 <span className="tabular-nums">{wordCount.toLocaleString()}</span>
                 <span>{tr ? "kelime" : "words"}</span>
