@@ -280,17 +280,24 @@ function TranslatePage() {
               </p>
             </div>
 
-            <select
-              value={documentType}
-              onChange={(e) => setDocumentType(e.target.value)}
-              className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 md:flex-none"
-            >
-              {DOCUMENT_TYPES.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {tr ? d.tr : d.en}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-1 flex-col gap-1 md:flex-none">
+              <select
+                value={documentType}
+                onChange={(e) => setDocumentType(e.target.value)}
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+              >
+                {DOCUMENT_TYPES.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {tr ? d.tr : d.en}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {tr
+                  ? "Çeviri stilini belirlemek için belge türünü seçin"
+                  : "Select document type to match the translation style"}
+              </p>
+            </div>
           </div>
         </div>
 
