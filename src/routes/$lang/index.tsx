@@ -34,6 +34,7 @@ export const Route = createFileRoute("/$lang/")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "https://akademika-ai.vercel.app/tr" }],
   }),
   component: Landing,
 });
