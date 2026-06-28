@@ -71,6 +71,20 @@ const DOCUMENT_TYPES = [
 
 const WORD_SOFT_LIMIT = 1500;
 
+// Small "?" tooltip — CSS-only, shows the hint above the icon on hover.
+function HelpTip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex shrink-0">
+      <span className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
+        ?
+      </span>
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-48 -translate-x-1/2 rounded-md bg-foreground px-2.5 py-1.5 text-xs leading-snug text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+        {text}
+      </span>
+    </span>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 function TranslatePage() {
@@ -260,12 +274,12 @@ function TranslatePage() {
             </p>
           </div>
 
-          <div className="flex w-full flex-wrap items-start gap-2 md:w-auto">
-            <div className="flex flex-1 flex-col gap-1 md:flex-none">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+            <div className="flex flex-1 items-center gap-1.5 md:flex-none">
               <select
                 value={discipline}
                 onChange={(e) => setDiscipline(e.target.value)}
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 md:flex-none"
               >
                 {DISCIPLINES.map((d) => (
                   <option key={d.value} value={d.value}>
@@ -273,18 +287,20 @@ function TranslatePage() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground">
-                {tr
-                  ? "Doğru terminoloji için metninize en uygun alanı seçin"
-                  : "Select the field closest to your text for accurate terminology"}
-              </p>
+              <HelpTip
+                text={
+                  tr
+                    ? "Doğru terminoloji için metninize en uygun alanı seçin"
+                    : "Select the field closest to your text for accurate terminology"
+                }
+              />
             </div>
 
-            <div className="flex flex-1 flex-col gap-1 md:flex-none">
+            <div className="flex flex-1 items-center gap-1.5 md:flex-none">
               <select
                 value={documentType}
                 onChange={(e) => setDocumentType(e.target.value)}
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 md:flex-none"
               >
                 {DOCUMENT_TYPES.map((d) => (
                   <option key={d.value} value={d.value}>
@@ -292,11 +308,13 @@ function TranslatePage() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground">
-                {tr
-                  ? "Çeviri stilini belirlemek için belge türünü seçin"
-                  : "Select document type to match the translation style"}
-              </p>
+              <HelpTip
+                text={
+                  tr
+                    ? "Çeviri stilini belirlemek için belge türünü seçin"
+                    : "Select document type to match the translation style"
+                }
+              />
             </div>
           </div>
         </div>
