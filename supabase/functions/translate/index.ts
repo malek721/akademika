@@ -33,7 +33,13 @@ async function callGeminiWithRetry(prompt: string, apiKey: string, retries = 0):
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 65536,
+          // thinkingConfig is a field OF generationConfig (not a sibling) — at the
+          // top level the API ignores it and thinking stays on. budget 0 = off.
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       }),
     },
   );
@@ -196,10 +202,28 @@ Deno.serve(async (req: Request) => {
       }
 
       const geminiData = await geminiRes.json() as {
-        candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
+        candidates: Array<{
+          content: { parts: Array<{ text: string }> };
+          finishReason?: string;
+        }>;
+        usageMetadata?: {
+          promptTokenCount?: number;
+          candidatesTokenCount?: number;
+          thoughtsTokenCount?: number;
+        };
       };
 
       translatedText = geminiData.candidates[0]?.content?.parts[0]?.text?.trim() ?? "";
+
+      const finishReason = geminiData.candidates[0]?.finishReason;
+      if (finishReason === "MAX_TOKENS") {
+        console.warn("[translate] output hit MAX_TOKENS — translation truncated");
+      }
+
+      const usage = geminiData.usageMetadata;
+      console.log(
+        `[translate] tokens — prompt: ${usage?.promptTokenCount}, output: ${usage?.candidatesTokenCount}, thinking: ${usage?.thoughtsTokenCount}`,
+      );
 
       if (!translatedText) throw new Error("Gemini returned empty content");
     } catch (apiErr) {
