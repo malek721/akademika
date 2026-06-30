@@ -15,6 +15,66 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Layer 1 — terms that must NEVER be translated (stay English/Latin regardless of
+// discipline or target language). Injected into the prompt as a high-priority block.
+// NOTE: the final 8 entries were fixed from mojibake in the source (Â°C→°C, Î±→α, …).
+const NEVER_TRANSLATE_TERMS = [
+  "A", "a posteriori", "a priori", "A. thaliana", "AC", "Accuracy", "actus reus",
+  "ad hoc", "ad libitum", "Adam", "ADHD", "ADP", "ALT", "amicus curiae", "ANCOVA",
+  "ANOVA", "ANSI", "API", "Appendix", "ASD", "AST", "ASTM", "atm", "ATP",
+  "ATP synthase", "attention", "AUC", "B.Sc.", "B2B", "B2C", "backpropagation",
+  "baseline", "batch", "batch size", "BDI", "benchmark", "BERT", "BGE-M3", "Big Five",
+  "BLAST", "BLEU", "BMI", "bona fide", "Bonferroni", "bp", "bpm", "BUN", "C. elegans",
+  "CAD", "CAGR", "CAM", "Cas9", "CBT", "cDNA", "cf.", "CFD", "chain-of-thought",
+  "checkpoint", "chi-square", "chunk", "chunking", "CI", "classification", "clustering",
+  "cm", "CNN", "coarse-grained", "COCO", "Cohen's d", "Cohen's kappa",
+  "confidence interval", "corpus", "correlation", "cosine similarity", "COVID-19",
+  "CPI", "CRISPR", "Cronbach's alpha", "cross-attention", "CRP", "CT", "CUDA",
+  "D. melanogaster", "Da", "dataset", "DC", "de facto", "de jure", "de novo", "decoder",
+  "df", "DIN", "DNA", "DNA polymerase", "DOI", "Dr.", "dropout", "DSM", "DSM-5",
+  "E. coli", "e.g.", "EBITDA", "EC50", "ECG", "ECHR", "EEG", "effect size", "EKG",
+  "ELISA", "embedding", "embeddings", "EMF", "encoder", "epoch", "EPS", "EQ", "Eq.",
+  "et al", "et al.", "etc.", "EU", "EUR", "ex officio", "ex vivo", "F-test", "F1",
+  "F1-score", "FAISS", "FDA", "FEA", "feature", "feature extraction", "FEM", "few-shot",
+  "Fig.", "Figure", "fine-grained", "fine-tune", "fine-tuning", "fMRI", "forex",
+  "forum non conveniens", "framework", "FTIR", "G+C", "g/mol", "GAN", "GBP", "GC",
+  "GC-MS", "GDP", "GDPR", "GenBank", "GHz", "GLUE", "GNP", "GPa", "GPT", "GPU",
+  "gradient", "ground truth", "grounding", "GRU", "habeas corpus", "hallucination",
+  "hazard ratio", "HbA1c", "HDL", "HIV", "HPLC", "HR", "HTML", "Hugging Face",
+  "hyperparameter", "Hz", "i.e.", "ibid.", "IC50", "ICC", "ICD", "ICJ", "ICU", "IEEE",
+  "ImageNet", "IMF", "in dubio pro reo", "in silico", "in situ", "in vitro", "in vivo",
+  "in-context learning", "inference", "inter alia", "IP", "IQ", "IR", "IRR", "ISBN",
+  "ISO", "ISSN", "IU", "J", "JSON", "K", "kb", "kDa", "Keras", "kg", "kHz", "kJ",
+  "kJ/mol", "km", "kN", "Kolmogorov-Smirnov", "kPa", "KPI", "Kruskal-Wallis", "kV",
+  "KVKK", "kW", "lambda", "LD50", "LDL", "learning rate", "lex lata", "lex specialis",
+  "library", "Likert", "LLM", "loss function", "LSTM", "M", "m", "M.Sc.", "m/s", "mA",
+  "Ma", "mala fide", "Mann-Whitney", "MANOVA", "MAP", "McNemar", "MDR", "mean", "median",
+  "mens rea", "METEOR", "mg", "MHz", "MIC", "miRNA", "mL", "mM", "mm", "mmHg", "mmol",
+  "MMPI", "MNIST", "mode", "mol", "MoU", "MPa", "MRI", "mRNA", "MRR", "MRSA", "MS", "mu",
+  "MW", "N", "n", "NAD", "NADH", "NADPH", "NCBI", "NDA", "NDCG", "NLP", "nM", "Nm", "NMR",
+  "Northern blot", "NPV", "Nu", "obiter dictum", "OCD", "odds ratio", "OECD", "one-shot",
+  "op. cit.", "optimizer", "OR", "ORCID", "overfitting", "overlap", "p", "p-value",
+  "P/E", "Pa", "pacta sunt servanda", "PCR", "PDB", "PDF", "Pearson", "per", "per os",
+  "perplexity", "PET", "pH", "Ph.D.", "PID", "pipeline", "pKa", "post mortem", "ppb",
+  "PPI", "ppm", "Pr", "pre-training", "Precision", "Precision@k", "pretraining",
+  "prima facie", "Prof.", "prompt", "prompt engineering", "prompting", "PTSD", "PWM",
+  "PyTorch", "qPCR", "r", "R-squared", "R2", "RAG", "ratio decidendi", "RCT", "Re",
+  "Recall", "Recall@5", "Recall@k", "regression", "regularization",
+  "reinforcement learning", "repository", "res judicata", "ResNet", "retrieval",
+  "retriever", "RMS", "RNA", "RNA polymerase", "RNN", "ROA", "RoBERTa", "ROC", "ROE",
+  "ROI", "ROUGE", "rpm", "RR", "rRNA", "RT-PCR", "S. cerevisiae", "SARS-CoV-2", "SD",
+  "SDK", "SE", "self-attention", "SEM", "SGD", "Shapiro-Wilk", "sigma", "siRNA", "SOTA",
+  "Southern blot", "Spearman", "SQL", "SQuAD", "STAI", "standard deviation",
+  "state-of-the-art", "status quo", "supervised learning", "SWOT", "t-test", "T5",
+  "Table", "TEM", "TensorFlow", "TF-IDF", "theta", "token", "tokenization", "tokenizer",
+  "top-k", "top-p", "TPU", "transfer learning", "Transformer", "tRNA", "TRY", "TSH",
+  "Tukey", "ultra vires", "UN", "underfitting", "unsupervised learning", "URL", "USD",
+  "UV", "UV-Vis", "V", "variance", "VAT", "vector", "vector database", "versus", "VGG",
+  "via", "vice versa", "vs.", "W", "WAIS", "Western blot", "WHO", "Wilcoxon", "WISC",
+  "word2vec", "WTO", "XML", "XRD", "YOLO", "z-score", "zero-shot",
+  "°C", "µg", "µL", "µM", "α", "β", "χ²", "Ω",
+];
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -317,14 +377,19 @@ const DISCIPLINE_TO_FIELD: Record<string, string | null> = {
 };
 
 /**
- * Finds glossary terms that actually appear in sourceText and returns
- * them as "term_source => term_target" strings (max 60).
+ * Finds glossary terms that actually appear in sourceText and returns them as
+ * "term_source => term_target" strings (max `maxTerms`).
+ *
+ * Two layers are merged:
+ *  - field='core'      → high-frequency academic terms, applied to ALL disciplines.
+ *  - discipline field  → the mapped TÜBA category for this discipline (if any).
  *
  * Algorithm:
- *  1. Fetch all glossary rows for (direction, field) — up to 2 000 terms.
+ *  1. Fetch rows for (direction) from 'core' AND the discipline field — each as its
+ *     own query, so a large discipline table can't crowd 'core' out under the cap.
  *  2. Sort longest term_source first (multi-word before single-word).
- *  3. Normalise source text with turkishLower() and test each term via
- *     a Unicode-aware word-boundary regex (\p{L}/\p{N} covers ğşüöçı…).
+ *  3. Normalise source text with turkishLower() and test each term via a
+ *     Unicode-aware word-boundary regex (\p{L}/\p{N} covers ğşüöçı…). Dedup overlap.
  *  4. Comma-separated targets → " | " alternatives.
  */
 async function matchGlossaryTerms(
@@ -332,43 +397,57 @@ async function matchGlossaryTerms(
   sourceText: string,
   field: string,
   direction: "tr2en" | "en2tr",
-  maxTerms = 60,
+  maxTerms = 150,
 ): Promise<string[]> {
-  const mappedField = DISCIPLINE_TO_FIELD[field.trim().toLowerCase()];
-  if (mappedField === null) return []; // no glossary for this discipline
+  const lowered = field.trim().toLowerCase();
+  const mappedField = DISCIPLINE_TO_FIELD[lowered];
   if (mappedField === undefined) {
-    // unknown discipline — fallback to direct lowercase
+    // unknown discipline — fall back to the raw lowercase value for the
+    // discipline-specific field (harmless if it doesn't exist in the table).
     console.warn("[glossary] unmapped discipline:", field);
   }
-  const normalizedField = mappedField ?? field.trim().toLowerCase();
 
-  const { data, error } = await supabase
-    .from("glossary")
-    .select("term_source, term_target")
-    .eq("direction", direction)
-    .eq("field", normalizedField)
-    .limit(2000);
+  // 'core' applies to EVERY discipline; the discipline-specific field is added on
+  // top. mappedField === null → no discipline coverage, so 'core' alone is used.
+  const disciplineField = mappedField === null ? null : (mappedField ?? lowered);
+  const fields = ["core"];
+  if (disciplineField && disciplineField !== "core") fields.push(disciplineField);
 
-  if (error) {
-    console.error("Glossary query error:", error.message);
-    return [];
+  // Fetch each field separately so a large discipline table (e.g. tarım ~16k rows)
+  // can't crowd 'core' out under the per-query 2 000-row cap.
+  const rows: Array<{ term_source: string; term_target: string }> = [];
+  for (const f of fields) {
+    const { data, error } = await supabase
+      .from("glossary")
+      .select("term_source, term_target")
+      .eq("direction", direction)
+      .eq("field", f)
+      .limit(2000);
+    if (error) {
+      console.error(`Glossary query error (field=${f}):`, error.message);
+      continue;
+    }
+    if (data?.length) rows.push(...data);
   }
-  if (!data?.length) return [];
+  if (!rows.length) return [];
 
   // Longest first → "yapay sinir ağı" is tested before "ağ"
-  const sorted = [...data].sort(
+  const sorted = [...rows].sort(
     (a, b) => b.term_source.length - a.term_source.length,
   );
 
   const normalizedText = turkishLower(sourceText);
   const matches: string[] = [];
+  const seen = new Set<string>();
 
   for (const { term_source, term_target } of sorted) {
     if (matches.length >= maxTerms) break;
 
     const normalizedTerm = turkishLower(term_source);
-    const escaped = escapeRegex(normalizedTerm);
+    if (seen.has(normalizedTerm)) continue; // dedup core/discipline overlap
+    seen.add(normalizedTerm);
 
+    const escaped = escapeRegex(normalizedTerm);
     // \p{L} matches any Unicode letter (ğ, ş, ü, ö, ç, ı included)
     // so the boundary correctly ignores mid-word positions
     const pattern = new RegExp(
@@ -389,7 +468,7 @@ async function matchGlossaryTerms(
   }
 
   console.log(
-    `[glossary] discipline="${field}" → mapped="${normalizedField}" → ${data?.length ?? 0} rows fetched, ${matches.length} terms matched in text`,
+    `[glossary] discipline="${field}" → fields=[${fields.join(", ")}] → ${rows.length} rows fetched, ${matches.length} terms matched in text`,
   );
 
   return matches;
@@ -475,6 +554,15 @@ Latin terms          → verbatim, italicized (in vitro, et al.).
 Person names         → verbatim original spelling.
 Acronyms             → internationally established ones: keep as-is.
 Figure/Table refs    → translate captions; never renumber.
+
+═══════════════════════════════════════════════════════════════════
+SECTION 4B — PROTECTED TERMS — DO NOT TRANSLATE (HIGHEST PRIORITY)
+═══════════════════════════════════════════════════════════════════
+The following terms must NEVER be translated — keep them EXACTLY as
+written in the source (English/Latin form), regardless of discipline,
+target language, or any other instruction. This list OVERRIDES all
+other rules, including the glossary:
+${NEVER_TRANSLATE_TERMS.join(", ")}
 
 ═══════════════════════════════════════════════════════════════════
 SECTION 5 — LANGUAGE-PAIR INTELLIGENCE
