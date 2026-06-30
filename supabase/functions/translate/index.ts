@@ -28,7 +28,7 @@ const NEVER_TRANSLATE_TERMS = [
   "CAD", "CAGR", "CAM", "Cas9", "CBT", "cDNA", "cf.", "CFD", "chain-of-thought",
   "checkpoint", "chi-square", "chunk", "chunking", "CI", "classification", "clustering",
   "cm", "CNN", "coarse-grained", "COCO", "Cohen's d", "Cohen's kappa",
-  "confidence interval", "corpus", "correlation", "cosine similarity", "COVID-19",
+  "confidence interval", "correlation", "cosine similarity", "COVID-19",
   "CPI", "CRISPR", "Cronbach's alpha", "cross-attention", "CRP", "CT", "CUDA",
   "D. melanogaster", "Da", "dataset", "DC", "de facto", "de jure", "de novo", "decoder",
   "df", "DIN", "DNA", "DNA polymerase", "DOI", "Dr.", "dropout", "DSM", "DSM-5",
@@ -563,6 +563,11 @@ written in the source (English/Latin form), regardless of discipline,
 target language, or any other instruction. This list OVERRIDES all
 other rules, including the glossary:
 ${NEVER_TRANSLATE_TERMS.join(", ")}
+
+═══════════════════════════════════════════════════════════════════
+SECTION 4C — FORCED TERMINOLOGY (overrides model preference)
+═══════════════════════════════════════════════════════════════════
+'corpus' must be translated as 'derlem', NEVER as 'bütünce'.
 
 ═══════════════════════════════════════════════════════════════════
 SECTION 5 — LANGUAGE-PAIR INTELLIGENCE
