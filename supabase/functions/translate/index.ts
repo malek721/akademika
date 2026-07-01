@@ -75,6 +75,132 @@ const NEVER_TRANSLATE_TERMS = [
   "°C", "µg", "µL", "µM", "α", "β", "χ²", "Ω",
 ];
 
+// Category split of the never-translate list (generated from never_translate_MASTER.csv;
+// union of UNIVERSAL + all categories === NEVER_TRANSLATE_TERMS, verified). 'universal'
+// stays in the static cached prefix; the discipline category is appended per request.
+const NEVER_TRANSLATE_UNIVERSAL: string[] = [
+  "a posteriori", "a priori", "ad hoc", "Appendix", "B.Sc.", "cf.", "de facto", "de jure",
+  "DOI", "Dr.", "e.g.", "Eq.", "et al", "et al.", "etc.", "Fig.", "Figure", "HTML", "i.e.",
+  "ibid.", "ISBN", "ISSN", "M.Sc.", "op. cit.", "ORCID", "PDF", "per", "Ph.D.", "Prof.",
+  "status quo", "Table", "URL", "versus", "via", "vice versa", "vs.", "XML",
+];
+
+const NEVER_TRANSLATE_BY_CATEGORY: Record<string, string[]> = {
+  biology: [
+    "A. thaliana", "ADP", "ATP", "ATP synthase", "BLAST", "bp", "C. elegans", "Cas9", "cDNA",
+    "CRISPR", "D. melanogaster", "de novo", "DNA", "DNA polymerase", "E. coli", "ELISA", "G+C",
+    "GenBank", "in situ", "in vitro", "in vivo", "kb", "kDa", "miRNA", "mRNA", "NAD", "NADH",
+    "NADPH", "NCBI", "Northern blot", "PCR", "PDB", "pH", "qPCR", "RNA", "RNA polymerase", "rpm",
+    "rRNA", "RT-PCR", "S. cerevisiae", "siRNA", "Southern blot", "tRNA", "Western blot",
+  ],
+  chemistry: [
+    "atm", "ATP", "Da", "DNA", "FTIR", "g/mol", "GC", "GC-MS", "HPLC", "IR", "K", "kDa",
+    "kJ/mol", "M", "mM", "mol", "MS", "nM", "NMR", "pH", "pKa", "ppb", "ppm", "SEM", "TEM", "UV",
+    "UV-Vis", "XRD", "°C", "µM",
+  ],
+  computer_ai: [
+    "Accuracy", "Adam", "API", "attention", "AUC", "backpropagation", "baseline", "batch",
+    "batch size", "benchmark", "BERT", "BGE-M3", "BLEU", "chain-of-thought", "checkpoint",
+    "chunk", "chunking", "classification", "clustering", "CNN", "coarse-grained", "COCO",
+    "cosine similarity", "cross-attention", "CUDA", "dataset", "decoder", "dropout", "embedding",
+    "embeddings", "encoder", "epoch", "F1", "F1-score", "FAISS", "feature", "feature extraction",
+    "few-shot", "fine-grained", "fine-tune", "fine-tuning", "framework", "GAN", "GLUE", "GPT",
+    "GPU", "gradient", "ground truth", "grounding", "GRU", "hallucination", "Hugging Face",
+    "hyperparameter", "ImageNet", "in-context learning", "inference", "JSON", "Keras",
+    "learning rate", "library", "LLM", "loss function", "LSTM", "MAP", "METEOR", "MNIST", "MRR",
+    "NDCG", "NLP", "one-shot", "optimizer", "overfitting", "overlap", "perplexity", "pipeline",
+    "pre-training", "Precision", "Precision@k", "pretraining", "prompt", "prompt engineering",
+    "prompting", "PyTorch", "RAG", "Recall", "Recall@5", "Recall@k", "regression",
+    "regularization", "reinforcement learning", "repository", "ResNet", "retrieval", "retriever",
+    "RNN", "RoBERTa", "ROC", "ROUGE", "SDK", "self-attention", "SGD", "SOTA", "SQL", "SQuAD",
+    "state-of-the-art", "supervised learning", "T5", "TensorFlow", "TF-IDF", "token",
+    "tokenization", "tokenizer", "top-k", "top-p", "TPU", "transfer learning", "Transformer",
+    "underfitting", "unsupervised learning", "vector", "vector database", "VGG", "word2vec",
+    "YOLO", "zero-shot",
+  ],
+  economics: [
+    "B2B", "B2C", "CAGR", "CPI", "EBITDA", "EPS", "EUR", "forex", "GBP", "GDP", "GNP", "IMF",
+    "IRR", "KPI", "NPV", "OECD", "P/E", "PPI", "ROA", "ROE", "ROI", "SWOT", "TRY", "USD", "VAT",
+    "WTO",
+  ],
+  engineering: [
+    "A", "AC", "ANSI", "ASTM", "CAD", "CAM", "CFD", "cm", "DC", "DIN", "EMF", "FEA", "FEM",
+    "GHz", "GPa", "Hz", "IEEE", "ISO", "J", "K", "kHz", "kJ", "km", "kN", "kPa", "kV", "kW", "m",
+    "m/s", "mA", "Ma", "MHz", "mm", "MPa", "MW", "N", "Nm", "Nu", "Pa", "PID", "Pr", "PWM", "Re",
+    "RMS", "rpm", "V", "W", "°C", "Ω",
+  ],
+  law: [
+    "actus reus", "amicus curiae", "bona fide", "ECHR", "EU", "ex officio",
+    "forum non conveniens", "GDPR", "habeas corpus", "ICC", "ICJ", "in dubio pro reo",
+    "inter alia", "IP", "KVKK", "lex lata", "lex specialis", "mala fide", "mens rea", "MoU",
+    "NDA", "obiter dictum", "pacta sunt servanda", "prima facie", "ratio decidendi",
+    "res judicata", "ultra vires", "UN", "WTO",
+  ],
+  medicine: [
+    "ad libitum", "ALT", "AST", "ATP", "BMI", "bpm", "BUN", "CI", "COVID-19", "CRP", "CT",
+    "de novo", "DNA", "EC50", "ECG", "EEG", "EKG", "ELISA", "ex vivo", "FDA", "HbA1c", "HDL",
+    "HIV", "HR", "IC50", "ICU", "in silico", "in situ", "in vitro", "in vivo", "IU", "kg",
+    "LD50", "LDL", "MDR", "mg", "MIC", "miRNA", "mL", "mmHg", "mmol", "MRI", "mRNA", "MRSA", "n",
+    "OR", "p", "p-value", "PCR", "per os", "PET", "post mortem", "qPCR", "r", "R2", "RCT", "RNA",
+    "RR", "RT-PCR", "SARS-CoV-2", "SD", "SEM", "TSH", "WHO", "µg", "µL",
+  ],
+  psychology: [
+    "ADHD", "ASD", "BDI", "Big Five", "CBT", "Cohen's d", "Cronbach's alpha", "DSM", "DSM-5",
+    "EEG", "effect size", "EQ", "fMRI", "ICD", "IQ", "Likert", "MMPI", "OCD", "p-value", "PTSD",
+    "STAI", "WAIS", "WISC",
+  ],
+  statistics: [
+    "ANCOVA", "ANOVA", "Bonferroni", "chi-square", "CI", "Cohen's d", "Cohen's kappa",
+    "confidence interval", "correlation", "Cronbach's alpha", "df", "F-test", "hazard ratio",
+    "Kolmogorov-Smirnov", "Kruskal-Wallis", "lambda", "Mann-Whitney", "MANOVA", "McNemar",
+    "mean", "median", "mode", "mu", "N", "n", "odds ratio", "p", "p-value", "Pearson", "r",
+    "R-squared", "R2", "regression", "SD", "SE", "SEM", "Shapiro-Wilk", "sigma", "Spearman",
+    "standard deviation", "t-test", "theta", "Tukey", "variance", "Wilcoxon", "z-score", "α",
+    "β", "χ²",
+  ],
+};
+
+// Always-included never-translate terms (kept in the cached static prefix):
+// universal academic notation + statistical notation. Statistics (p, ANOVA, CI, SD…)
+// appears across nearly all empirical disciplines, so it's global rather than gated.
+const NEVER_TRANSLATE_ALWAYS: string[] = [
+  ...NEVER_TRANSLATE_UNIVERSAL,
+  ...NEVER_TRANSLATE_BY_CATEGORY.statistics,
+];
+const NEVER_TRANSLATE_ALWAYS_SET = new Set(NEVER_TRANSLATE_ALWAYS);
+
+// UI discipline → never-translate category (parallels DISCIPLINE_TO_FIELD). null =
+// no technical category → universal terms only (the smallest, most-cacheable case).
+const DISCIPLINE_TO_NT_CATEGORY: Record<string, string | null> = {
+  biyoloji: "biology",
+  ziraat: "biology",
+  kimya: "chemistry",
+  bilgisayar: "computer_ai",
+  iktisat: "economics",
+  "işletme": "economics",
+  fizik: "engineering",
+  "mühendislik": "engineering",
+  "mimarlık": "engineering",
+  "çevre": "engineering",
+  hukuk: "law",
+  siyaset: "law",
+  "tıp": "medicine",
+  "eczacılık": "medicine",
+  hemşirelik: "medicine",
+  veterinerlik: "medicine",
+  psikoloji: "psychology",
+  matematik: null, // statistics notation is always-included (in the cached prefix)
+  // universal-only (no matching technical category):
+  arkeoloji: null,
+  "coğrafya": null,
+  dilbilim: null,
+  "eğitim": null,
+  felsefe: null,
+  "iletişim": null,
+  sosyoloji: null,
+  tarih: null,
+};
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -477,53 +603,44 @@ async function matchGlossaryTerms(
 
 // ─────────────────────────────────────────────────────────────
 // AKADEMIKA Master Academic Translation Protocol v1.0
+//
+// STATIC_PREFIX holds all request-independent rules + the universal
+// never-translate list. It is a module constant → byte-identical on every
+// request, so Gemini's implicit prefix cache applies (~90% discount on the
+// repeated prefix). Per-request values (params, discipline protected terms,
+// matched glossary, source text) are appended as a dynamic suffix in
+// buildPrompt(). Rule prose is genericized ("the TARGET language", "the
+// DISCIPLINE"); the actual values appear once in the REQUEST PARAMETERS block.
+// NEVER_TRANSLATE_UNIVERSAL is a constant, so this interpolation resolves once.
 // ─────────────────────────────────────────────────────────────
-function buildPrompt(
-  text: string,
-  sourceLang: string,
-  targetLang: string,
-  discipline: string,
-  documentType: string,
-  glossaryLines: string[],
-): string {
-  const glossaryBlock = glossaryLines.length > 0
-    ? glossaryLines.join("\n")
-    : "(no glossary terms matched for this text)";
-
-  return `# AKADEMIKA — MASTER ACADEMIC TRANSLATION PROTOCOL v1.0
+const STATIC_PREFIX = `# AKADEMIKA — MASTER ACADEMIC TRANSLATION PROTOCOL v1.0
 
 ═══════════════════════════════════════════════════════════════════
 SECTION 0 — IDENTITY & MISSION
 ═══════════════════════════════════════════════════════════════════
 You are AKADEMIKA, an elite academic translation system. You embody
 three experts working as one:
-  (1) A discipline specialist with doctoral-level knowledge of
-      ${discipline} and its scholarly literature in both languages.
-  (2) A professional academic translator with native command of
-      ${sourceLang} and ${targetLang} scholarly registers.
+  (1) A discipline specialist with doctoral-level knowledge of the
+      active DISCIPLINE and its scholarly literature in both languages.
+  (2) A professional academic translator with native command of the
+      SOURCE and TARGET language scholarly registers.
   (3) A senior academic copyeditor who reviews against journal and
       thesis standards.
 You produce publication-grade translations indistinguishable from
 text originally written by a native academic in the target language.
 You are NOT a literal translator. You are NOT a casual paraphraser.
-
-═══════════════════════════════════════════════════════════════════
-SECTION 1 — REQUEST PARAMETERS
-═══════════════════════════════════════════════════════════════════
-SOURCE_LANG   : ${sourceLang}
-TARGET_LANG   : ${targetLang}
-DISCIPLINE    : ${discipline}
-DOCUMENT_TYPE : ${documentType}
-TN_MODE       : off
+The active SOURCE_LANG, TARGET_LANG, DISCIPLINE, and DOCUMENT_TYPE
+values are given in the REQUEST PARAMETERS block at the END of this
+prompt; apply the rules below using those values.
 
 ═══════════════════════════════════════════════════════════════════
 SECTION 2 — EXECUTION PIPELINE (phases A and C are silent)
 ═══════════════════════════════════════════════════════════════════
 PHASE A — ANALYZE (silent):
   1. Identify document genre and section type.
-  2. Map genre conventions in ${targetLang} academia.
+  2. Map genre conventions in the TARGET language academia.
   3. Scan: technical terms, citations, equations, acronyms, units.
-  4. Cross-check every detected term against GLOSSARY in Section 7.
+  4. Cross-check every detected term against the GLOSSARY (Section 7).
   5. Note all structural elements that must be mirrored.
 PHASE B — TRANSLATE: execute Sections 3–8.
 PHASE C — REVIEW (silent): run QA checklist in Section 9.
@@ -533,9 +650,9 @@ PHASE C — REVIEW (silent): run QA checklist in Section 9.
 SECTION 3 — TRANSLATION DOCTRINE
 ═══════════════════════════════════════════════════════════════════
 3.1 MEANING-FIRST: translate scholarly intent, never word-for-word.
-3.2 GENRE FIDELITY: match ${documentType} conventions in ${targetLang}.
+3.2 GENRE FIDELITY: match the DOCUMENT_TYPE conventions in the TARGET language.
 3.3 TERMINOLOGY LAW: GLOSSARY is binding. Zero variation per term.
-3.4 REGISTER: ${documentType} → highest formality, full hedging.
+3.4 REGISTER: the DOCUMENT_TYPE → highest formality, full hedging.
 3.5 HEDGING: preserve epistemic strength exactly (suggests ≠ proves).
 3.6 ZERO DRIFT: nothing added, omitted, or flattened.
 3.7 CONNECTORS: however/thus/moreover → identical logical force.
@@ -558,11 +675,14 @@ Figure/Table refs    → translate captions; never renumber.
 ═══════════════════════════════════════════════════════════════════
 SECTION 4B — PROTECTED TERMS — DO NOT TRANSLATE (HIGHEST PRIORITY)
 ═══════════════════════════════════════════════════════════════════
-The following terms must NEVER be translated — keep them EXACTLY as
+The following terms — universal academic notation plus statistical
+symbols and tests — must NEVER be translated; keep them EXACTLY as
 written in the source (English/Latin form), regardless of discipline,
 target language, or any other instruction. This list OVERRIDES all
-other rules, including the glossary:
-${NEVER_TRANSLATE_TERMS.join(", ")}
+other rules, including the glossary. Additional discipline-specific
+protected terms are listed in the DISCIPLINE PROTECTED TERMS block at
+the END of this prompt; the same rule applies to them.
+${NEVER_TRANSLATE_ALWAYS.join(", ")}
 
 ═══════════════════════════════════════════════════════════════════
 SECTION 4C — FORCED TERMINOLOGY (overrides model preference)
@@ -597,9 +717,9 @@ IF sourceLang = English → Turkish:
     URLs, code, and dataset names (SQuAD v1.1 stays as-is).
 
 ═══════════════════════════════════════════════════════════════════
-SECTION 6 — DISCIPLINE MODULE: ${discipline}
+SECTION 6 — DISCIPLINE MODULE
 ═══════════════════════════════════════════════════════════════════
-- Use established terminology for ${discipline} in ${targetLang}.
+- Use established terminology for the active DISCIPLINE in the TARGET language.
 - Retain standard technical terms practitioners actually use.
 - Translate the prose, not the technical stack.
 - Units, standards (ISO, IEEE), protocol names: verbatim.
@@ -628,9 +748,8 @@ Subsequent mentions: RAG only, no Turkish expansion.
 ═══════════════════════════════════════════════════════════════════
 SECTION 7 — GLOSSARY ENFORCEMENT (binding)
 ═══════════════════════════════════════════════════════════════════
-DISCIPLINE GLOSSARY (mandatory — overrides your own preference):
-${glossaryBlock}
-
+The DISCIPLINE GLOSSARY (mandatory — overrides your own preference) is
+provided in the GLOSSARY block at the END of this prompt.
 Conflict rule: GLOSSARY > your judgment.
 Where glossary offers alternatives (a | b), choose the one that
 best fits the context; stay consistent throughout.
@@ -653,18 +772,65 @@ SECTION 9 — QA CHECKLIST (silent — all must pass before output)
 □ Numbers/dates: digit-by-digit match with source.
 □ Completeness: no sentence omitted, none added.
 □ Hedging: same epistemic strength as source on every claim.
-□ Register: matches ${documentType} calibration.
+□ Register: matches the DOCUMENT_TYPE calibration.
 □ Connectors: argument logic preserved.
-□ Naturalness: would a native ${targetLang} scholar write this?
+□ Naturalness: would a native TARGET-language scholar write this?
 □ Structure: paragraphs, headings, emphasis mirrored exactly.
-□ If targetLang = Turkish: ı İ ş ğ ç ö ü — zero ASCII substitution.
+□ If the TARGET language is Turkish: ı İ ş ğ ç ö ü — zero ASCII substitution.
 
 ═══════════════════════════════════════════════════════════════════
 SECTION 10 — OUTPUT CONTRACT
 ═══════════════════════════════════════════════════════════════════
 Return ONLY the translated text.
 No preamble, no commentary, no explanations.
-Mirror the source structure exactly.
+Mirror the source structure exactly.`;
+
+function buildPrompt(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+  discipline: string,
+  documentType: string,
+  glossaryLines: string[],
+): string {
+  const glossaryBlock = glossaryLines.length > 0
+    ? glossaryLines.join("\n")
+    : "(no glossary terms matched for this text)";
+
+  // Item 2: only the universal never-translate terms live in STATIC_PREFIX;
+  // the discipline's category is appended here (empty → universal-only).
+  const ntCat = DISCIPLINE_TO_NT_CATEGORY[discipline.trim().toLowerCase()];
+  const disciplineTerms = ntCat
+    ? (NEVER_TRANSLATE_BY_CATEGORY[ntCat] ?? []).filter((t) => !NEVER_TRANSLATE_ALWAYS_SET.has(t))
+    : [];
+  const disciplineNTblock = disciplineTerms.length > 0
+    ? disciplineTerms.join(", ")
+    : "(none beyond the universal list in Section 4B)";
+
+  // Dynamic suffix — everything request-specific, AFTER the cached static prefix.
+  return `${STATIC_PREFIX}
+
+═══════════════════════════════════════════════════════════════════
+REQUEST PARAMETERS
+═══════════════════════════════════════════════════════════════════
+SOURCE_LANG   : ${sourceLang}
+TARGET_LANG   : ${targetLang}
+DISCIPLINE    : ${discipline}
+DOCUMENT_TYPE : ${documentType}
+TN_MODE       : off
+
+═══════════════════════════════════════════════════════════════════
+DISCIPLINE PROTECTED TERMS — DO NOT TRANSLATE
+═══════════════════════════════════════════════════════════════════
+Same rule as Section 4B — never translate these; keep them verbatim.
+Specific to the active DISCIPLINE, in addition to the universal list:
+${disciplineNTblock}
+
+═══════════════════════════════════════════════════════════════════
+SECTION 7 — GLOSSARY (binding — matched terms for this text)
+═══════════════════════════════════════════════════════════════════
+DISCIPLINE GLOSSARY (mandatory — overrides your own preference):
+${glossaryBlock}
 
 ═══════════════════════════════════════════════════════════════════
 SOURCE TEXT
