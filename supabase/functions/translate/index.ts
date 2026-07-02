@@ -396,6 +396,7 @@ Deno.serve(async (req: Request) => {
           promptTokenCount?: number;
           candidatesTokenCount?: number;
           thoughtsTokenCount?: number;
+          cachedContentTokenCount?: number;
         };
       };
 
@@ -408,7 +409,7 @@ Deno.serve(async (req: Request) => {
 
       const usage = geminiData.usageMetadata;
       console.log(
-        `[translate] tokens — prompt: ${usage?.promptTokenCount}, output: ${usage?.candidatesTokenCount}, thinking: ${usage?.thoughtsTokenCount}`,
+        `[translate] tokens — prompt: ${usage?.promptTokenCount}, cached: ${usage?.cachedContentTokenCount ?? 0}, output: ${usage?.candidatesTokenCount}, thinking: ${usage?.thoughtsTokenCount}`,
       );
 
       if (!translatedText) throw new Error("Gemini returned empty content");
