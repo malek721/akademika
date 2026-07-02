@@ -50,8 +50,8 @@
                   │   4. Word count                               │
                   │   5. Plan + usage limit check ──► 429 if over │
                   │   6. INSERT translations (status=processing)  │
-                  │   7. Glossary matching (3 layers) ──► glossary│
-                  │   8. buildPrompt() (AKADEMIKA inline protocol)│
+                  │   7. Glossary matching (2 layers) ──► glossary│
+                  │   8. buildPrompt() (static prefix + suffix)   │
                   │   9. Gemini 2.5 Flash call ──────► Google API │
                   │  10. UPDATE translations + UPSERT usage       │
                   └──────────────────┬────────────────────────────┘
@@ -74,14 +74,15 @@ All in [`supabase/functions/translate/index.ts`](supabase/functions/translate/in
 4. **Word counting** — `source_text.trim().split(/\s+/)...` → `wordCount`.
 5. **Plan / limit checking** — reads `profiles.plan`, maps via `PLAN_LIMITS` (`free` 5k / `student` 50k / `researcher` 500k words/month). Reads `usage.words_used` for the current `YYYY-MM` period. If `used + wordCount > limit` → **429**.
 6. **Translation record creation** — `INSERT` into `translations` with `status: "processing"`, returns the row `id`.
-7. **Glossary matching** — `matchGlossaryTerms(...)` resolves the glossary direction via `directionFromTurkish(source_lang)` and queries **3 layers** (see §5):
-   - **Layer 1 — `NEVER_TRANSLATE_TERMS`** (code constant, 443 terms) — injected wholesale into the prompt, not queried.
-   - **Layer 2 — core glossary** (`field='core'`) — high-frequency academic terms, applied to **every** discipline.
-   - **Layer 3 — discipline glossary** — the TÜBA field mapped from the user's discipline via `DISCIPLINE_TO_FIELD`.
-   Layers 2+3 are fetched (one query each), merged, deduped, matched against the source text with a Turkish-aware Unicode word-boundary regex, and capped at `maxTerms = 150`.
-8. **Prompt building** — `buildPrompt(...)` assembles the inline **AKADEMIKA Master Protocol v1.0**. Sections it enforces: identity/mission, request params, silent ANALYZE/REVIEW pipeline, translation doctrine (meaning-first, terminology law, hedging), **Section 4 protected elements** (citations/DOIs/equations/numbers verbatim), **Section 4B PROTECTED TERMS** (the 443 never-translate list), **Section 4C FORCED TERMINOLOGY** (`corpus → derlem`, never `bütünce`), language-pair intelligence (TR↔EN specifics, Turkish decimal commas, diacritics), discipline module, **Section 7 glossary enforcement** (the matched terms, binding), integrity/QA, and an output contract ("return ONLY the translation").
-9. **Gemini API call** — `callGeminiWithRetry(...)` POSTs to `gemini-2.5-flash:generateContent`. Key config: **`maxOutputTokens: 65536`** and **`thinkingConfig.thinkingBudget: 0`** (thinking disabled — it was eating the old 8192 budget and truncating output). Retries twice on 503/429.
-10. **Response handling + usage update** — checks `finishReason` (warns on `MAX_TOKENS`), logs `usageMetadata` token counts, then `UPDATE translations` (`translated_text`, `status: "completed"`) and **`UPSERT usage`** (`words_used += wordCount`). Returns `{ id, translated_text, word_count, words_remaining }`.
+7. **Glossary matching** — `matchGlossaryTerms(...)` resolves the glossary direction via `directionFromTurkish(source_lang)` and queries **two DB layers** (see §5):
+   - **core glossary** (`field='core'`) — high-frequency academic terms, applied to **every** discipline.
+   - **discipline glossary** — the TÜBA field mapped from the user's discipline via `DISCIPLINE_TO_FIELD`.
+   Both are fetched (one query each), merged, deduped, matched against the source text with a Turkish-aware Unicode word-boundary regex, and capped at `maxTerms = 150`. (The **never-translate** terms are a separate, code-side layer injected straight into the prompt — see step 8 and §5.)
+8. **Prompt building** — `buildPrompt(...)` returns a **byte-identical static prefix + a dynamic per-request suffix** (restructured for prompt caching — see §5):
+   - **`STATIC_PREFIX`** (module constant, ~2,596 tokens): the entire AKADEMIKA Master Protocol v1.0 with rule prose *genericized* ("the TARGET language", "the DISCIPLINE") so it never varies — identity, silent ANALYZE/REVIEW pipeline, doctrine, **Section 4 protected elements**, **Section 4B always-protected terms** (`NEVER_TRANSLATE_ALWAYS` = 37 universal + 49 statistics), **Section 4C forced terminology** (`corpus → derlem`, never `bütünce`), language-pair intelligence (TR↔EN, Turkish decimals/diacritics), discipline module, Section 7 glossary rule, integrity/QA, output contract.
+   - **Dynamic suffix** (varies per request): REQUEST PARAMETERS (the actual lang/discipline/doc-type values), **DISCIPLINE PROTECTED TERMS** (the discipline's category from `NEVER_TRANSLATE_BY_CATEGORY`, deduped against the always-set), the matched **GLOSSARY** block, and the **SOURCE TEXT**.
+9. **Gemini API call** — `callGeminiWithRetry(...)` POSTs to `gemini-2.5-flash:generateContent`. Key config: **`maxOutputTokens: 65536`** and **`thinkingConfig.thinkingBudget: 0`** (thinking disabled — it was eating the old 8192 budget and truncating output). Retries twice on 503/429. Because `STATIC_PREFIX` is byte-identical across requests, Gemini's **implicit prefix cache** discounts it (~90%) on repeat calls within the cache window.
+10. **Response handling + usage update** — checks `finishReason` (warns on `MAX_TOKENS`), logs `usageMetadata` token counts including **`cachedContentTokenCount`** (`[translate] tokens — prompt: … cached: … output: … thinking: …`, visible in the Edge logs to confirm the prefix cache is hitting), then `UPDATE translations` (`translated_text`, `status: "completed"`) and **`UPSERT usage`** (`words_used += wordCount`). Returns `{ id, translated_text, word_count, words_remaining }`.
 
 ---
 
@@ -108,12 +109,26 @@ The UI offers **26 disciplines** (`DISCIPLINES` in [`translate.tsx`](src/routes/
 
 Without this map, ~16 of 26 disciplines returned **zero** glossary terms.
 
-### The 3 layers
+### The layers
+
+**A. Never-translate (code-side, injected into the prompt — NOT the DB).** The 442-term list in `index.ts` is split by category (generated from `never_translate_MASTER.csv`, union verified === master):
+
+| Set | Const | Where in prompt | Count |
+|---|---|---|---|
+| **always** | `NEVER_TRANSLATE_ALWAYS` = `NEVER_TRANSLATE_UNIVERSAL` (37) + statistics (49) | **static prefix** (cached) | **86** |
+| **discipline-specific** | `NEVER_TRANSLATE_BY_CATEGORY[cat]` selected via `DISCIPLINE_TO_NT_CATEGORY` | dynamic suffix (deduped vs always) | 0–125 per discipline |
+
+`DISCIPLINE_TO_NT_CATEGORY` maps each UI discipline → one NT category (`biology`/`chemistry`/`computer_ai`/`economics`/`engineering`/`law`/`medicine`/`psychology`) or `null`. `null` disciplines (arkeoloji, coğrafya, dilbilim, eğitim, felsefe, iletişim, sosyoloji, tarih, **matematik**) get only the always-set. Statistics is in the always-set because statistical notation (`p`, `ANOVA`, `CI`, `SD`) recurs across nearly all empirical disciplines. The master `NEVER_TRANSLATE_TERMS` (442) is kept for reference (it equals the union of always + all categories) but is no longer read by the prompt.
+
+**B. Glossary (DB-driven, matched per text).**
+
 | Layer | Where | Scope | Count |
 |---|---|---|---|
-| **1. `NEVER_TRANSLATE_TERMS`** | code constant in `index.ts` | terms kept English/Latin always (metrics, Latin phrases, acronyms, units, symbols) | **443** |
-| **2. core academic** | `glossary` table, `field='core'` | high-frequency academic words, ALL disciplines (`study→çalışma`, `however→ancak`) | **430 rows** = 215 pairs × 2 directions (214 core + the forced `corpus↔derlem` pair) |
-| **3. discipline-specific** | `glossary` table, `field=<TÜBA category>` | the mapped discipline only | bulk of the table |
+| **core academic** | `glossary` table, `field='core'` | high-frequency academic words, ALL disciplines (`study→çalışma`, `however→ancak`) | **430 rows** = 215 pairs × 2 directions (214 core + the forced `corpus↔derlem` pair) |
+| **discipline-specific** | `glossary` table, `field=<TÜBA category>` | the mapped discipline only | bulk of the table |
+
+### Prompt-caching design (static prefix)
+`buildPrompt` = **`STATIC_PREFIX`** (constant ~2,596 tokens: genericized rules + the always never-translate set) **+ a dynamic suffix** (request params, discipline NT terms, matched glossary, source text). Because the prefix is byte-identical on every request, Gemini's **implicit prefix cache** discounts it ~90% on repeats — verified: prefix identical across `bilgisayar`/`tıp`/`tarih`, with `cachedContentTokenCount` logged per request (step 10) to confirm hits. The per-request never-translate payload dropped from **1,181 tokens** (the whole list, sent every request) to **0–350** (the discipline's category only; `0` for universal-only disciplines, since their terms are all in the cached prefix).
 
 ### Term counts by source (`dictionary` column — live, verified 2026-07)
 | Source (`dictionary`) | Rows | Notes |
